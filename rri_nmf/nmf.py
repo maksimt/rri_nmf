@@ -46,36 +46,6 @@ def iterative_minimizer(M, n_iter=10, random_state=0):
     return x, yt.T
 
 
-# def qf_min(w, c, sum_constraint=1):
-#     """
-#     Minimize quadratic form np.dot(x.T, w) + np.dot(x.T, x) c
-#     wrt 0 <= x <= 1 and sum(x)=sum_constraint
-#     Parameters
-#     ----------
-#     w: (d,) ndarray
-#     c: scalar
-#     sum_constraint: float or None (what does x have to sum to?)
-#
-#     Returns
-#     -------
-#     (d,) minimizer x
-#
-#     """
-#
-#     f = lambda x: np.inner(w, x) + c * np.sum(x ** 2)
-#
-#     if sum_constraint:
-#         constr = {'type': 'eq', 'fun': lambda x: np.sum(x) - sum_constraint}
-#     else:
-#         constr = tuple()
-#
-#     return sp.optimize.minimize(f,
-#                                 x0=np.zeros(w.size),
-#                                 method='SLSQP',
-#                                 bounds=[(0, 1)] * w.size,
-#                                 constraints=constr,
-#                                 tol=1e-10)
-
 def qf_min(w, c, s=1.0, w_correction=False):
     """min_{0<=x<=1} <w,x> + 0.5*c<x,x> s.t. sum(x)=s
     Parameters
