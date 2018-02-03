@@ -6,9 +6,8 @@ import numpy as np
 from matrixops import normalize, tfidf
 
 
-
 def initialize_nmf(X, n_components, init=None, eps=1e-6, random_state=None,
-                    row_normalize=False, n_words_beam=20):
+                   row_normalize=False, n_words_beam=20):
     """Algorithms for NMF initialization.
     Computes an initial guess for the non-negative
     rank k matrix approximation for X: X = WH
@@ -89,18 +88,18 @@ def initialize_nmf(X, n_components, init=None, eps=1e-6, random_state=None,
 
     # Slightly smarter random initialization
     if init == 'smart_random':
-       avg = np.sqrt(X.mean() / n_components)
-       rng = check_random_state(random_state)
-       H = avg * rng.randn(n_components, n_features)
-       W = avg * rng.randn(n_samples, n_components)
-       # we do not write np.abs(H, out=H) to stay compatible with
-       # numpy 1.5 and earlier where the 'out' keyword is not
-       # supported as a kwarg on ufuncs
-       np.abs(H, H)
-       np.abs(W, W)
-       if row_normalize:
-           H = normalize(H)
-       return W, H
+        avg = np.sqrt(X.mean() / n_components)
+        rng = check_random_state(random_state)
+        H = avg * rng.randn(n_components, n_features)
+        W = avg * rng.randn(n_samples, n_components)
+        # we do not write np.abs(H, out=H) to stay compatible with
+        # numpy 1.5 and earlier where the 'out' keyword is not
+        # supported as a kwarg on ufuncs
+        np.abs(H, H)
+        np.abs(W, W)
+        if row_normalize:
+            H = normalize(H)
+        return W, H
 
     # NNDSVD initialization
     U, S, V = randomized_svd(X, n_components, random_state=random_state)
@@ -154,14 +153,15 @@ def initialize_nmf(X, n_components, init=None, eps=1e-6, random_state=None,
         H[H == 0] = abs(avg * rng.randn(len(H[H == 0])) / 100)
     else:
         raise ValueError(
-            'Invalid init parameter: got %r instead of one of %r' % (
-            init, (None, 'random', 'nndsvd', 'nndsvda', 'nndsvdar')))
+                'Invalid init parameter: got %r instead of one of %r' % (
+                    init, (None, 'random', 'nndsvd', 'nndsvda', 'nndsvdar')))
 
     if row_normalize:
         # W = normalize(W)
         H = normalize(H)
 
     return W, H
+
 
 def init_coherence_beam_search(X, n_components, n_words_beam=20):
     """Initialize the topics using beam search to maximize coherence defined
@@ -206,6 +206,7 @@ def init_coherence_beam_search(X, n_components, n_words_beam=20):
     T = normalize(T)
     W = normalize(np.maximum(np.dot(X, T.T), 0))
     return W, T
+
 
 def _norm(x):
     """Dot product-based Euclidean norm implementation

@@ -65,7 +65,7 @@ def euclidean_proj_simplex(v_in, s=1):
     w = (v - theta).clip(min=0)
 
     return sp.sparse.csr_matrix(w.reshape(v_in.shape)) if sp.sparse.issparse(
-        v_in) \
+            v_in) \
         else w.reshape(v_in.shape)
 
 
@@ -196,13 +196,14 @@ def labels_to_mat(y):
             return normalize(y)  # Y is already correct shape, just normalize
         else:
             raise Exception(
-                'labels_to_mat: number of columns of y = {0} ' + 'doesnt '
-                                                                 'match '
-                                                                 'number of '
-                                                                 'unique '
-                                                                 'elements = {'
-                                                                 '1}'.format(
-                    y.shape[1], k))
+                    'labels_to_mat: number of columns of y = {0} ' + 'doesnt '
+                                                                     'match '
+                                                                     'number '
+                                                                     'of '
+                                                                     'unique '
+                                                                     'elements = {'
+                                                                     '1}'.format(
+                            y.shape[1], k))
 
 
 def harden_distributions(W):

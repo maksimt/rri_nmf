@@ -23,10 +23,10 @@ from scipy.stats import norm as gaussian
 from matrixops import (
     euclidean_proj_simplex, normalize, stack_matrices, tfidf,
     proj_mat_to_simplex
-    )
+)
 from optimization import (
     first_last_stopping_condition, universal_stopping_condition
-    )
+)
 from initialization import initialize_nmf
 # ------------------------------------------------------------------------------
 
@@ -273,14 +273,13 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
 
     if np.prod(np.shape(W_in)) == 0 or np.prod(np.shape(T_in)) == 0:
         if not W_mat is None:
-            W, T = initialize_nmf(W_mat * X, k, init,
-                                   random_state=random_state,
-                                   row_normalize=False,
-                                   n_words_beam=n_words_beam)
+            W, T = initialize_nmf(W_mat * X, k, init, random_state=random_state,
+                                  row_normalize=False,
+                                  n_words_beam=n_words_beam)
         else:
             W, T = initialize_nmf(X, k, init, random_state=random_state,
-                                   row_normalize=False,
-                                   n_words_beam=n_words_beam)
+                                  row_normalize=False,
+                                  n_words_beam=n_words_beam)
         if project_T_each_iter:
             T = normalize(T) * t_row_sum
             # if project_W_each_iter and not w_row_sum is None:
@@ -432,7 +431,9 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                 if debug >= 3:
                     print('\t\t\tdenom (||W_t||+rt2) == {'
                           '0:.2e}+{1:.2e} = {2:.2e}'.format(nw, reg_t_l2,
-                        scipy.maximum(nw + reg_t_l2, 0)))
+                                                            scipy.maximum(
+                                                                nw + reg_t_l2,
+                                                                0)))
 
                 if store_intermediate:
                     rtv['numer_W'][iter_no].append(wR_store)
@@ -467,7 +468,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     if debug >= 3:
                         obj_after = OBJ.true_objective(X, W, T)
                         print('\t\t\t\tChange in obj = {0:.2e}'.format(
-                            obj_after - obj_before))
+                                obj_after - obj_before))
                 #
                 project_and_check_reset_t()
 
@@ -505,7 +506,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                 if debug >= 3:
                     print('\t\t\tdenom W (||T_t||+rw2) == {0:.2e}+{'
                           '1:.2e} = {2:.2e}'.format(nt, reg_w_l2,
-                        nt + reg_w_l2))
+                                                    nt + reg_w_l2))
 
                 nw1 = np.sum(W[:, t])
                 if True or nw1 > 1e-10:
@@ -557,7 +558,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     if debug >= 3:
                         obj_after = OBJ.true_objective(X, W, T)
                         print('\t\t\t\tChange in obj = {0:.2e}'.format(
-                            obj_after - obj_before))
+                                obj_after - obj_before))
 
                 assert np.all(W[:, t] >= 0), 'W contains negative entries'
 
@@ -574,7 +575,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         if project_W_each_iter and not fix_W and not w_row_sum is None:
             if debug >= 1:
                 print('\nAfter iter {iter_no} projecting each W row'.format(
-                    iter_no=iter_no))
+                        iter_no=iter_no))
             if debug >= 5 and W.size <= 50:
                 print('Before projection:\n', W)
             c = reg_w_l2 + np.sum(T**2)
@@ -595,7 +596,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                 if debug >= 3:
                     obj_after = OBJ.true_objective(X, W, T)
                     print('\t\t\t\tChange in obj = {0:.2e}'.format(
-                        obj_after - obj_before))
+                            obj_after - obj_before))
             if debug >= 5 and W.size <= 50:
                 print('After projection:\n', W)
 
@@ -604,7 +605,8 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                 obj_history.append(OBJ.true_objective(X, W, T))
             else:
                 warnings.warn(warnings.WarningMessage(
-                    'nmf: compute objective not supported if W_mat is input'))
+                        'nmf: compute objective not supported if W_mat is '
+                        'input'))
                 Xh = np.dot(W, T)
                 # obj_history.append(np.sum((X[Ix, Jx] - Xh[Ix, Jx])**2))
             if debug >= 1:
@@ -625,8 +627,8 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         if debug >= 1:
             t_now = time.time()
             print('Iter done; ||grad_i||/||grad_1||=%.3e; Took %.3fsec' % (
-            np.sqrt(grad_norm_this_iter) / proj_gradient_norm[0],
-            t_now - it_start_time))
+                np.sqrt(grad_norm_this_iter) / proj_gradient_norm[0],
+                t_now - it_start_time))
             if debug >= 5 and W.size <= 50 and T.size <= 50:
                 print('W:\n', W)
                 print('T:\n', T)
@@ -642,15 +644,16 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
             # dont use proj grad stop cond if recsys
             if debug >= 1:
                 print(
-                    '\n\nSTOPPING because proj grad norm after iter %d' %
-                    iter_no)
+                        '\n\nSTOPPING because proj grad norm after iter %d' %
+                        iter_no)
             break
 
         if compute_obj_each_iter and universal_stopping_condition(obj_history,
                                                                   eps_stop=eps_stop):
             if debug >= 1:
                 print(
-                    '\n\nSTOPPING because obj_history after iter %d' % iter_no)
+                        '\n\nSTOPPING because obj_history after iter %d' %
+                        iter_no)
             break
 
     iter_cputime = [x - start_time for x in iter_cputime]
@@ -659,8 +662,8 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     if not project_W_each_iter and not w_row_sum is None and not fix_W:
         if np.isscalar(w_row_sum):
             if debug >= 1:
-                print(
-                    'Post completion W row projection to {}'.format(w_row_sum))
+                print('Post completion W row projection to {}'.format(
+                    w_row_sum))
             for i in range(n):
                 W[i, :] = euclidean_proj_simplex(W[i, :], s=w_row_sum)
         else:  # w_row_sum is a vector with a individual sum for each row
@@ -682,10 +685,12 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     if store_intermediate:
         for itno in rtv['numer_W']:
             rtv['numer_W'][itno] = stack_matrices(rtv['numer_W'][itno],
-                lambda row: row.reshape((1, row.size)))
+                                                  lambda row: row.reshape(
+                                                          (1, row.size)))
         for itno in rtv['denom_W']:
             rtv['denom_W'][itno] = stack_matrices(rtv['denom_W'][itno],
-                lambda row: row.reshape((1, row.size)))
+                                                  lambda row: row.reshape(
+                                                          (1, row.size)))
 
     rtv['W'] = W
     rtv['T'] = T
@@ -697,28 +702,6 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     rtv['random_state'] = random_state
 
     return rtv
-
-
-def _safe_compute_error(X, W, H, use_old_impl=False):
-    """Frobenius norm between X and WH, safe for sparse array
-
-    copied directly from sklearn.decomposition.nmf
-    Orignal Authors:
-         Vlad Niculae
-         Lars Buitinck
-         Mathieu Blondel <mathieu@mblondel.org>
-         Tom Dupre la Tour
-         Chih-Jen Lin, National Taiwan University
-    """
-
-    if not sparse.issparse(X):
-        error = norm(X - np.dot(W, H))
-    else:
-        norm_X = np.dot(X.data, X.data)
-        norm_WH = trace_dot(np.dot(np.dot(W.T, W), H), H)
-        cross_prod = trace_dot((X * H.T), W)
-        error = sqrt(norm_X + norm_WH - 2. * cross_prod)
-    return error
 
 
 def _projected_gradient(grad, vec, lb=0, ub=1, zero=1e-10):
@@ -737,5 +720,3 @@ def _projected_gradient(grad, vec, lb=0, ub=1, zero=1e-10):
     rtv += np.sum(scipy.minimum(grad[vec <= lb], 0))
     rtv += np.sum(scipy.maximum(grad[vec >= ub], 0))
     return rtv
-
-

@@ -1,7 +1,7 @@
 import sklearn
 from sklearn.utils.validation import (
     check_X_y, check_is_fitted, check_array, check_non_negative
-    )
+)
 from sklearn.utils.estimator_checks import check_estimator
 from sklearn.model_selection import train_test_split
 import inspect
@@ -69,7 +69,8 @@ class NMF_RS_Estimator(sklearn.base.BaseEstimator):
         if self.use_early_stopping:
 
             UItr, UIval, Rtr, Rval = train_test_split(X, y, test_size=0.05,
-                random_state=0, stratify=None)
+                                                      random_state=0,
+                                                      stratify=None)
 
             # ntr, dtr = len(np.unique(UItr[:,0])), len(np.unique(UItr[:,1]))
             Xtr = sp.coo_matrix((Rtr, (UItr[:, 0], UItr[:, 1])),
@@ -132,8 +133,8 @@ class NMF_RS_Estimator(sklearn.base.BaseEstimator):
             Xtr = sp.csr_matrix(Xtr)
         NZ = Xtr.nonzero()
         # X = np.array([(NZ[0][i], NZ[1][i]) for i in range(len(NZ[0]))])
-        X = np.hstack(
-            (NZ[0].reshape((NZ[0].size, 1)), NZ[1].reshape((NZ[1].size, 1))))
+        X = np.hstack((
+        NZ[0].reshape((NZ[0].size, 1)), NZ[1].reshape((NZ[1].size, 1))))
         y = Xtr.data
         return self.fit(X, y)
 
