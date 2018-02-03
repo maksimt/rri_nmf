@@ -31,7 +31,10 @@ from initialization import initialize_nmf
 # ------------------------------------------------------------------------------
 
 debug = 0
+eps_div_by_zero = np.spacing(10)  # added to denominators to avoid /0
 
+
+print('In rri_nmf.nmf')
 
 class TrueObjComputer(object):
     def __init__(self, X, reg_w_l2, reg_t_l2, reg_w_l1, reg_t_l1, Wm, wr):
@@ -70,14 +73,17 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         early_stop=None, reset_topic_method='random', fix_reset_seed=False,
         reg_w_l2=0, reg_t_l2=0, reg_w_l1=0, reg_t_l1=0,
         negative_denom_correction=True,
-        damping_w=0, damping_t=0, diagnostics=[], store_intermediate=False,
-        I_store=None, eps_gauss_t=None, delta_gauss_t=None):
+        damping_w=0, damping_t=0, diagnostics=[],
+        store_intermediate=False, ind_rows_to_store=None,
+        eps_gauss_t=None, delta_gauss_t=None):
     """
 
     Parameters
     ----------
-    X
-    k
+    X : array_like
+        The n*d document-feature ndarray to be factorized.
+    k : int
+        Number of latent factors, i.e. the rank of the factorization.
     w_row
     W_mat
     fix_W
@@ -108,7 +114,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     damping_t
     diagnostics
     store_intermediate
-    I_store
+    ind_rows_to_store
     n_words_beam
     eps_gauss_t
     delta_gauss_t
@@ -117,7 +123,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     -------
 
     """
-    global debug
+    global debug, eps_div_by_zero
 
     """ Factorize non-negative [n*d] X as  non-negative [n*k] W x [k*d] T
 
@@ -176,11 +182,6 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         (Hessians) may become negative (negative definite), so we need to
         check the boundaries of our constraint set for optimal solutions
         rather than simply set the first derivative to 0.
-    :param saddle_point_handling : string 'exception' by default. When
-        negative l_2 regularization is used, how should saddle points be handled
-        ? The default is to throw an exception. Until I see a saddle point I
-        won't think about how to handle them. :P
-
     :param damping_w: weight of previous iteration's w added to current w
     :param damping_t: weight of previous iteration's t added to current t
     :param diagnosticics: a function that should be measured at each iter
@@ -189,7 +190,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     :param store_intermediate : boolean [False] store the numerators and
         denominators for each topic update for each iteration (used for
         detailed analysis or debuging)
-    :param I_store : list or None (default) when storing intermediate results
+    :param ind_rows_to_store : list or None (default) when storing intermediate results
         they can be stored for all rows (if None) or a given list of rows. The
         use is to see whether a particular subset of rows has a particular
         effect on the intermediate results
@@ -220,9 +221,6 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     max_time = max_time - 10  # subtract 10sec for projecting W
 
     n, d = X.shape
-
-    _eps_div_by_zero = np.spacing(10)  # added to denominators to avoid /0
-
 
     X_orig = None
     if w_row is not None:
@@ -262,10 +260,10 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
             if debug >= 5 and T[t, :].size <= 50:
                 print('\t\t\t\tReset to {}'.format(T[t, :]))
 
+    start_time = time.clock()
 
     W, T = _initialize_and_validate(**locals())
 
-    start_time = time.clock()
     iter_cputime = []  # time per iteration
     proj_gradient_norm = []  # the norm of projected gradients is used as a
     # stopping condition. Thesis Ho section 3.5
@@ -284,19 +282,6 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         last_score = np.inf
         W_prev = copy.deepcopy(W)
         T_prev = copy.deepcopy(T)
-
-    if project_W_each_iter and not fix_W and not w_row_sum is None:
-        if debug >= 1:
-            print('Projecting W rows after initialization')
-        if np.isscalar(w_row_sum):
-            for i in range(n):
-                W[i, :] = euclidean_proj_simplex(W[i, :], s=w_row_sum)
-        else:  # w_row_sum is a vector with a individual sum for each row
-            for i in range(n):
-                W[i, :] = euclidean_proj_simplex(W[i, :], s=w_row_sum[i])
-
-    if project_T_each_iter and not fix_T and not t_row_sum is None:
-        T = proj_mat_to_simplex(T, t_row_sum)
 
     obj_history = []
     if compute_obj_each_iter:
@@ -350,13 +335,13 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     wW[t] = 0
                     wR = wX - wW.dot(T)
                     nw = (W[:, t]**2).sum()  # ||W[:, t]||^2, this is a scalar
-                    if store_intermediate and not (I_store is not None):
+                    if store_intermediate and not (ind_rows_to_store is not None):
                         wR_store = wR
                         nw_store = nw
-                    elif store_intermediate and I_store is not None:
-                        ws = W[I_store, :][:, t]
-                        wXs = ws.T.dot(X[I_store, :])
-                        wWs = ws.T.dot(W[I_store, :])
+                    elif store_intermediate and ind_rows_to_store is not None:
+                        ws = W[ind_rows_to_store, :][:, t]
+                        wXs = ws.T.dot(X[ind_rows_to_store, :])
+                        wWs = ws.T.dot(W[ind_rows_to_store, :])
                         wWs[t] = 0
                         wR_store = wXs - wWs.dot(T)
                         nw_store = (ws**2).sum()
@@ -368,13 +353,13 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     nw = np.dot(rshp(W[:, t]**2).T, W_mat).ravel()
                     # this is a vector
                     #  but python broadcasting implements Lemma 6.5 correct
-                    if store_intermediate and not (I_store is not None):
+                    if store_intermediate and not (ind_rows_to_store is not None):
                         wR_store = wR
                         nw_store = nw
-                    elif store_intermediate and I_store is not None:
-                        wR_store = np.dot(W[I_store, :][:, t].T, Rt[I_store, :])
-                        nw_store = np.dot(rshp(W[I_store, :][:, t]**2).T,
-                                          W_mat[I_store, :]).ravel()
+                    elif store_intermediate and ind_rows_to_store is not None:
+                        wR_store = np.dot(W[ind_rows_to_store, :][:, t].T, Rt[ind_rows_to_store, :])
+                        nw_store = np.dot(rshp(W[ind_rows_to_store, :][:, t]**2).T,
+                                          W_mat[ind_rows_to_store, :]).ravel()
 
                 if eps_gauss_t and delta_gauss_t:
                     # we received non-Nones for both and the intent is to use
@@ -677,7 +662,26 @@ def _projected_gradient(grad, vec, lb=0, ub=1, zero=1e-10):
     return rtv
 
 def _initialize_and_validate(W_in, T_in, W_mat, X, k, init, random_state,
-                             project_T_each_iter, t_row_sum, n, d, **kwargs):
+                             project_T_each_iter, project_W_each_iter,
+                             w_row_sum, t_row_sum, fix_W, fix_T, n, d,
+                             **kwargs):
+    """Initializes W, T, or sets them to W_in, T_in, respectively. Ensures
+    that W, T satisfy non-negativity and row-sum constraints.
+
+    Parameters
+    ----------
+    **kwargs
+        All parameters are passed directly from `nmf` using locals()
+
+    Returns
+    -------
+    W : array_like
+        n*k array of doc-topic weights
+    T : array_like
+        k*d array of topic-word probabilities
+    """
+    global debug
+
     if np.prod(np.shape(W_in)) == 0 or np.prod(np.shape(T_in)) == 0:
         if not W_mat is None:
             W, T = initialize_nmf(W_mat * X, k, init, random_state=random_state,
@@ -703,4 +707,15 @@ def _initialize_and_validate(W_in, T_in, W_mat, X, k, init, random_state,
         T = T.toarray()
     if scipy.sparse.issparse(W):
         W = W.toarray()
+
+    if project_W_each_iter and not fix_W and not w_row_sum is None:
+        if debug >= 1:
+            print('Projecting W rows after initialization')
+        W = proj_mat_to_simplex(W, w_row_sum)
+
+    if project_T_each_iter and not fix_T and not t_row_sum is None:
+        if debug >= 1:
+            print('Projecting W rows after initialization')
+        T = proj_mat_to_simplex(T, t_row_sum)
+
     return W, T

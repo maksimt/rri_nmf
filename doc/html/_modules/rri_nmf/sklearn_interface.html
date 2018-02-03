@@ -1,0 +1,558 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>rri_nmf.sklearn_interface &mdash; rri_nmf 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="rri_nmf 0.1 documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> rri_nmf
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">rri_nmf</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>rri_nmf.sklearn_interface</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for rri_nmf.sklearn_interface</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">sklearn</span>
+<span class="kn">from</span> <span class="nn">sklearn.utils.validation</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">check_X_y</span><span class="p">,</span> <span class="n">check_is_fitted</span><span class="p">,</span> <span class="n">check_array</span><span class="p">,</span> <span class="n">check_non_negative</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">sklearn.utils.estimator_checks</span> <span class="k">import</span> <span class="n">check_estimator</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="k">import</span> <span class="n">train_test_split</span>
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy.sparse</span> <span class="k">as</span> <span class="nn">sp</span>
+
+
+<div class="viewcode-block" id="NMF_RS_Estimator"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_RS_Estimator">[docs]</a><span class="k">class</span> <span class="nc">NMF_RS_Estimator</span><span class="p">(</span><span class="n">sklearn</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">BaseEstimator</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">wr1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">wr2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">tr1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">tr2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">W</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span> <span class="n">T</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">nmf_kwargs</span><span class="o">=</span><span class="p">{},</span>
+                 <span class="n">use_early_stopping</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">n</span> <span class="o">=</span> <span class="n">n</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">d</span> <span class="o">=</span> <span class="n">d</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="n">k</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span> <span class="o">=</span> <span class="n">max_iter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wr1</span> <span class="o">=</span> <span class="n">wr1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wr2</span> <span class="o">=</span> <span class="n">wr2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tr1</span> <span class="o">=</span> <span class="n">tr1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tr2</span> <span class="o">=</span> <span class="n">tr2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">random_state</span> <span class="o">=</span> <span class="n">random_state</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_rating</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_rating</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">Xpred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_early_stopping</span> <span class="o">=</span> <span class="n">use_early_stopping</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="n">W</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">T</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">nmf_kwargs</span> <span class="o">=</span> <span class="n">nmf_kwargs</span>
+
+    <span class="c1"># def __getitem__(self, key): return self.__getattribute__(key)</span>
+
+<div class="viewcode-block" id="NMF_RS_Estimator.sparsify"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_RS_Estimator.sparsify">[docs]</a>    <span class="k">def</span> <span class="nf">sparsify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="NMF_RS_Estimator.densify"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_RS_Estimator.densify">[docs]</a>    <span class="k">def</span> <span class="nf">densify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="NMF_RS_Estimator.fit"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_RS_Estimator.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            X - n*2 indexes, i.e. (i, j) pairs</span>
+<span class="sd">            y - n*1 values of X[i,j]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># X, y = check_X_y(X, y)</span>
+
+        <span class="n">max_iter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_rating</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_rating</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_early_stopping</span><span class="p">:</span>
+
+            <span class="n">UItr</span><span class="p">,</span> <span class="n">UIval</span><span class="p">,</span> <span class="n">Rtr</span><span class="p">,</span> <span class="n">Rval</span> <span class="o">=</span> <span class="n">train_test_split</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+                                                      <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                                                      <span class="n">stratify</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+            <span class="c1"># ntr, dtr = len(np.unique(UItr[:,0])), len(np.unique(UItr[:,1]))</span>
+            <span class="n">Xtr</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">coo_matrix</span><span class="p">((</span><span class="n">Rtr</span><span class="p">,</span> <span class="p">(</span><span class="n">UItr</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">UItr</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])),</span>
+                                <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">))</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+
+            <span class="c1"># nv, dv = len(np.unique(UIval[:,0])), len(np.unique(UIval[:,1]))</span>
+            <span class="n">Xv</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">coo_matrix</span><span class="p">((</span><span class="n">Rval</span><span class="p">,</span> <span class="p">(</span><span class="n">UIval</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">UIval</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])),</span>
+                               <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">))</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+
+            <span class="k">def</span> <span class="nf">RMSE_val</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">):</span>
+                <span class="c1"># X is ignore</span>
+                <span class="c1"># return 99</span>
+                <span class="n">I</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="n">Xv</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()</span>
+                <span class="n">Xpred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+                <span class="n">Xpred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">Xpred</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_rating</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_rating</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">Xpred</span><span class="p">[</span><span class="n">I</span><span class="p">,</span> <span class="n">J</span><span class="p">]</span> <span class="o">-</span> <span class="n">Xv</span><span class="p">[</span><span class="n">I</span><span class="p">,</span> <span class="n">J</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+
+            <span class="n">early_stop</span> <span class="o">=</span> <span class="n">RMSE_val</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">early_stop</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">Xtr</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">coo_matrix</span><span class="p">((</span><span class="n">y</span><span class="p">,</span> <span class="p">(</span><span class="n">X</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])),</span>
+                                <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">d</span><span class="p">))</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+
+        <span class="n">W_mat_tr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">Xtr</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">Itr</span><span class="p">,</span> <span class="n">Jtr</span><span class="p">]</span> <span class="o">=</span> <span class="n">Xtr</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()</span>
+        <span class="n">W_mat_tr</span><span class="p">[</span><span class="n">Itr</span><span class="p">,</span> <span class="n">Jtr</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="c1"># we can continue fitting an existing model</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">W_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">W_in</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">T_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">T_in</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># import pdb; pdb.set_trace()</span>
+
+        <span class="n">soln</span> <span class="o">=</span> <span class="n">nmf</span><span class="p">(</span><span class="n">Xtr</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">,</span> <span class="n">max_time</span><span class="o">=</span><span class="mi">7200</span><span class="p">,</span>
+                   <span class="n">project_W_each_iter</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">project_T_each_iter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                   <span class="n">W_mat</span><span class="o">=</span><span class="n">W_mat_tr</span><span class="p">,</span> <span class="n">W_in</span><span class="o">=</span><span class="n">W_in</span><span class="p">,</span> <span class="n">T_in</span><span class="o">=</span><span class="n">T_in</span><span class="p">,</span> <span class="n">early_stop</span><span class="o">=</span><span class="n">early_stop</span><span class="p">,</span>
+                   <span class="n">reg_w_l1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wr1</span><span class="p">,</span> <span class="n">reg_w_l2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wr2</span><span class="p">,</span> <span class="n">reg_t_l1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tr1</span><span class="p">,</span>
+                   <span class="n">reg_t_l2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tr2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">,</span>
+                   <span class="n">negative_denom_correction</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">nmf_kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="n">soln</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;W&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">soln</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;T&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nmf_outputs</span> <span class="o">=</span> <span class="n">soln</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="NMF_RS_Estimator.fit_from_Xtr"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_RS_Estimator.fit_from_Xtr">[docs]</a>    <span class="k">def</span> <span class="nf">fit_from_Xtr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Xtr</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; construct X,y from Xtr and send it to fit &quot;&quot;&quot;</span>
+        <span class="c1"># import pdb; pdb.set_trace()</span>
+        <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">Xtr</span><span class="p">):</span>
+            <span class="n">Xtr</span> <span class="o">=</span> <span class="n">Xtr</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">Xtr</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">Xtr</span><span class="p">)</span>
+        <span class="n">NZ</span> <span class="o">=</span> <span class="n">Xtr</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()</span>
+        <span class="c1"># X = np.array([(NZ[0][i], NZ[1][i]) for i in range(len(NZ[0]))])</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span>
+        <span class="n">NZ</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">NZ</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">NZ</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">NZ</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="mi">1</span><span class="p">))))</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">Xtr</span><span class="o">.</span><span class="n">data</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="NMF_RS_Estimator.transform"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_RS_Estimator.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Xnew</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;express Xnew in terms of topics self.T&quot;&quot;&quot;</span>
+        <span class="n">W_mat_tr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">Xnew</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="p">[</span><span class="n">Itr</span><span class="p">,</span> <span class="n">Jtr</span><span class="p">]</span> <span class="o">=</span> <span class="n">Xnew</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()</span>
+        <span class="n">W_mat_tr</span><span class="p">[</span><span class="n">Itr</span><span class="p">,</span> <span class="n">Jtr</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+
+        <span class="n">soln</span> <span class="o">=</span> <span class="n">nmf</span><span class="p">(</span><span class="n">Xnew</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">max_time</span><span class="o">=</span><span class="mi">7200</span><span class="p">,</span>
+                   <span class="n">project_W_each_iter</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">project_T_each_iter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                   <span class="n">W_mat</span><span class="o">=</span><span class="n">W_mat_tr</span><span class="p">,</span> <span class="n">T_in</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">fix_T</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reg_w_l1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wr1</span><span class="p">,</span>
+                   <span class="n">reg_w_l2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wr2</span><span class="p">,</span> <span class="n">reg_t_l1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tr1</span><span class="p">,</span> <span class="n">reg_t_l2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tr2</span><span class="p">,</span>
+                   <span class="n">random_state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">,</span>
+                   <span class="n">negative_denom_correction</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">nmf_kwargs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">soln</span><span class="p">[</span><span class="s1">&#39;W&#39;</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="NMF_RS_Estimator.make_Xpred"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_RS_Estimator.make_Xpred">[docs]</a>    <span class="k">def</span> <span class="nf">make_Xpred</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">Xpred</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Xpred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">Xpred</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Xpred</span><span class="p">,</span> <span class="n">a_min</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_rating</span><span class="p">,</span>
+                                 <span class="n">a_max</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_rating</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="NMF_RS_Estimator.predict"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_RS_Estimator.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">make_Xpred</span><span class="p">()</span>
+        <span class="n">check_is_fitted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;W&#39;</span><span class="p">,</span> <span class="s1">&#39;T&#39;</span><span class="p">])</span>
+
+        <span class="n">X</span> <span class="o">=</span> <span class="n">check_array</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">Xpred</span><span class="p">[</span><span class="n">X</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]]</span></div>
+
+<div class="viewcode-block" id="NMF_RS_Estimator.score"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_RS_Estimator.score">[docs]</a>    <span class="k">def</span> <span class="nf">score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])):</span>
+        <span class="sd">&quot;&quot;&quot;Return RMSE of predictions&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">make_Xpred</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
+            <span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">yh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">y</span> <span class="o">-</span> <span class="n">yh</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># X is a n*d matrix</span>
+            <span class="n">I</span><span class="p">,</span> <span class="n">J</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">nonzero</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">X</span><span class="p">[</span><span class="n">I</span><span class="p">,</span> <span class="n">J</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">Xpred</span><span class="p">[</span><span class="n">I</span><span class="p">,</span> <span class="n">J</span><span class="p">])</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span></div></div>
+
+
+<div class="viewcode-block" id="NMF_TM_Estimator"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_TM_Estimator">[docs]</a><span class="k">class</span> <span class="nc">NMF_TM_Estimator</span><span class="p">(</span><span class="n">sklearn</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">BaseEstimator</span><span class="p">,</span>
+                       <span class="n">sklearn</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">TransformerMixin</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">wr1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">wr2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">tr1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">tr2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                 <span class="n">handle_tfidf</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">handle_normalization</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+                 <span class="n">W</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span> <span class="n">T</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]),</span> <span class="n">nmf_kwargs</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        n : int</span>
+<span class="sd">            number of documents</span>
+<span class="sd">        d : int</span>
+<span class="sd">            size of dictionary</span>
+<span class="sd">        k : int</span>
+<span class="sd">            number of topics</span>
+<span class="sd">        wr1 : float [0]</span>
+<span class="sd">            regularization for l_1 norm of W</span>
+<span class="sd">        wr2 : float [0]</span>
+<span class="sd">            regularization for l_2 norm of W</span>
+<span class="sd">        tr1 : float [0]</span>
+<span class="sd">            regularization for l_1 norm of T</span>
+<span class="sd">        tr2 : float [0]</span>
+<span class="sd">            regularization of l_2 norm of T</span>
+<span class="sd">        handle_tfidf : boolean [False]</span>
+<span class="sd">            Apply tfidf before fit / transform</span>
+<span class="sd">        handle_normalization: boolean [False]</span>
+<span class="sd">            Normalize rows to sum to 1 before fit/transform</span>
+<span class="sd">        W = n*k np.array [np.array([])]</span>
+<span class="sd">            initial W matrix for NMF, initialized automatically if empty</span>
+<span class="sd">        T = k*d np.array [(np.array([]))]</span>
+<span class="sd">            initial T matrix for NMF, initialized automatically if empty</span>
+<span class="sd">        nmf_kwargs = dictionary [{}]</span>
+<span class="sd">            additional keywoard arguments to pass to the nmf method. See</span>
+<span class="sd">            @nmf for options.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">args</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">values</span> <span class="o">=</span> <span class="n">inspect</span><span class="o">.</span><span class="n">getargvalues</span><span class="p">(</span><span class="n">inspect</span><span class="o">.</span><span class="n">currentframe</span><span class="p">())</span>
+        <span class="n">values</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;self&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">arg</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">arg</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+
+    <span class="c1"># def __getitem__(self, key): return self.__getattribute__(key)</span>
+
+<div class="viewcode-block" id="NMF_TM_Estimator.sparsify"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_TM_Estimator.sparsify">[docs]</a>    <span class="k">def</span> <span class="nf">sparsify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">sp</span><span class="o">.</span><span class="n">csr_matrix</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">tocsr</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="NMF_TM_Estimator.densify"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_TM_Estimator.densify">[docs]</a>    <span class="k">def</span> <span class="nf">densify</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sp</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="NMF_TM_Estimator.fit_transform"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_TM_Estimator.fit_transform">[docs]</a>    <span class="k">def</span> <span class="nf">fit_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            X - n*d</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">X</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">),</span> <span class="s1">&#39;X must be non-negative&#39;</span>
+
+        <span class="c1"># we can continue fitting an existing model</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">W_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">W_in</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">T_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">T_in</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_tfidf</span><span class="p">:</span>
+            <span class="n">X</span><span class="p">,</span> <span class="n">idf</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">tfidf</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">return_idf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">idf</span> <span class="o">=</span> <span class="n">idf</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_normalization</span><span class="p">:</span>
+            <span class="n">X</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+        <span class="n">soln</span> <span class="o">=</span> <span class="n">nmf</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_iter</span><span class="p">,</span> <span class="n">max_time</span><span class="o">=</span><span class="mi">7200</span><span class="p">,</span>
+                   <span class="n">project_W_each_iter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">w_row_sum</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                   <span class="n">project_T_each_iter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">W_in</span><span class="o">=</span><span class="n">W_in</span><span class="p">,</span> <span class="n">T_in</span><span class="o">=</span><span class="n">T_in</span><span class="p">,</span>
+                   <span class="n">reg_w_l1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wr1</span><span class="p">,</span> <span class="n">reg_w_l2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wr2</span><span class="p">,</span> <span class="n">reg_t_l1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tr1</span><span class="p">,</span>
+                   <span class="n">reg_t_l2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tr2</span><span class="p">,</span> <span class="n">negative_denom_correction</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                   <span class="n">random_state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">nmf_kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="n">soln</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;W&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">soln</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;T&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nmf_outputs</span> <span class="o">=</span> <span class="n">soln</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span></div>
+
+<div class="viewcode-block" id="NMF_TM_Estimator.one_iter"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_TM_Estimator.one_iter">[docs]</a>    <span class="k">def</span> <span class="nf">one_iter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">W_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">W_in</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">T_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">T_in</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_tfidf</span><span class="p">:</span>
+            <span class="n">X</span><span class="p">,</span> <span class="n">idf</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">tfidf</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">return_idf</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">idf</span> <span class="o">=</span> <span class="n">idf</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_normalization</span><span class="p">:</span>
+            <span class="n">X</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+
+        <span class="n">soln</span> <span class="o">=</span> <span class="n">nmf</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_time</span><span class="o">=</span><span class="mi">240</span><span class="p">,</span>
+                   <span class="n">project_W_each_iter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">w_row_sum</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                   <span class="n">project_T_each_iter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">W_in</span><span class="o">=</span><span class="n">W_in</span><span class="p">,</span> <span class="n">T_in</span><span class="o">=</span><span class="n">T_in</span><span class="p">,</span>
+                   <span class="n">reg_w_l1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wr1</span><span class="p">,</span> <span class="n">reg_w_l2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wr2</span><span class="p">,</span> <span class="n">reg_t_l1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tr1</span><span class="p">,</span>
+                   <span class="n">reg_t_l2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tr2</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">,</span>
+                   <span class="n">negative_denom_correction</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">nmf_kwargs</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">W</span> <span class="o">=</span> <span class="n">soln</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;W&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">T</span> <span class="o">=</span> <span class="n">soln</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;T&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nmf_outputs</span> <span class="o">=</span> <span class="n">soln</span>
+
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="NMF_TM_Estimator.fit"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_TM_Estimator.fit">[docs]</a>    <span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fit_transform</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span></div>
+
+<div class="viewcode-block" id="NMF_TM_Estimator.transform"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_TM_Estimator.transform">[docs]</a>    <span class="k">def</span> <span class="nf">transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">Xnew</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;express Xnew in terms of topics self.T&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_tfidf</span><span class="p">:</span>
+            <span class="n">Xnew</span> <span class="o">=</span> <span class="n">Xnew</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">idf</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">handle_normalization</span><span class="p">:</span>
+            <span class="n">Xnew</span> <span class="o">=</span> <span class="n">transform</span><span class="o">.</span><span class="n">normalize</span><span class="p">(</span><span class="n">Xnew</span><span class="p">)</span>
+
+        <span class="n">soln</span> <span class="o">=</span> <span class="n">nmf</span><span class="p">(</span><span class="n">Xnew</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">max_time</span><span class="o">=</span><span class="mi">7200</span><span class="p">,</span>
+                   <span class="n">project_W_each_iter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">w_row_sum</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">T_in</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+                   <span class="n">fix_T</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reg_w_l1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wr1</span><span class="p">,</span> <span class="n">reg_w_l2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">wr2</span><span class="p">,</span>
+                   <span class="n">reg_t_l1</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tr1</span><span class="p">,</span> <span class="n">reg_t_l2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">tr2</span><span class="p">,</span>
+                   <span class="n">negative_denom_correction</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                   <span class="n">random_state</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_state</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">soln</span><span class="p">[</span><span class="s1">&#39;W&#39;</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="NMF_TM_Estimator.constrained_transform"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_TM_Estimator.constrained_transform">[docs]</a>    <span class="k">def</span> <span class="nf">constrained_transform</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="NMF_TM_Estimator.score"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.sklearn_interface.NMF_TM_Estimator.score">[docs]</a>    <span class="k">def</span> <span class="nf">score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return R^2 of new X &quot;&quot;&quot;</span>
+
+        <span class="n">SST</span> <span class="o">=</span> <span class="p">((</span><span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="n">W</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+        <span class="n">SSE</span> <span class="o">=</span> <span class="p">((</span><span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">SSE</span> <span class="o">/</span> <span class="n">SST</span></div></div>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Maksim Tsikhanovich.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

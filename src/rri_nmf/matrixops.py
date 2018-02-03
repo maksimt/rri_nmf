@@ -96,7 +96,7 @@ def proj_mat_to_simplex(W, s=1.0, axis=1):
             for i in range(W.shape[0]):
                 W[i, :] = euclidean_proj_simplex(W[i, :], s[i])
         return W
-    elif axis == 1:
+    elif axis == 0:
         return proj_mat_to_simplex(W.T, s, axis=1).T
 
 

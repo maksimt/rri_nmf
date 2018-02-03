@@ -1,0 +1,716 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>rri_nmf package &mdash; rri_nmf 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="rri_nmf 0.1 documentation" href="../../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> rri_nmf
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">rri_nmf package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-rri_nmf.initialization">rri_nmf.initialization module</a></li>
+<li><a class="reference internal" href="#module-rri_nmf.matrixops">rri_nmf.matrixops module</a></li>
+<li><a class="reference internal" href="#module-rri_nmf.nmf">rri_nmf.nmf module</a></li>
+<li><a class="reference internal" href="#module-rri_nmf.optimization">rri_nmf.optimization module</a></li>
+<li><a class="reference internal" href="#module-rri_nmf.sklearn_interface">rri_nmf.sklearn_interface module</a></li>
+</ul>
+</li>
+</ul>
+</div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">rri_nmf</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+      <li>rri_nmf package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../_sources/docs/source/rri_nmf.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="rri-nmf-package">
+<h1>rri_nmf package<a class="headerlink" href="#rri-nmf-package" title="Permalink to this headline">¶</a></h1>
+<span class="target" id="module-rri_nmf"></span><div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-rri_nmf.initialization">
+<span id="rri-nmf-initialization-module"></span><h2>rri_nmf.initialization module<a class="headerlink" href="#module-rri_nmf.initialization" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="rri_nmf.initialization.init_coherence_beam_search">
+<code class="descname">init_coherence_beam_search</code><span class="sig-paren">(</span><em>X</em>, <em>n_components</em>, <em>n_words_beam=20</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/initialization.html#init_coherence_beam_search"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.initialization.init_coherence_beam_search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize the topics using beam search to maximize coherence defined
+by pointwise mutual information</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.initialization.initialize_nmf">
+<code class="descname">initialize_nmf</code><span class="sig-paren">(</span><em>X</em>, <em>n_components</em>, <em>init=None</em>, <em>eps=1e-06</em>, <em>random_state=None</em>, <em>row_normalize=False</em>, <em>n_words_beam=20</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/initialization.html#initialize_nmf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.initialization.initialize_nmf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Algorithms for NMF initialization.
+Computes an initial guess for the non-negative
+rank k matrix approximation for X: X = WH</p>
+<p>Vlad Niculae
+Lars Buitinck
+Mathieu Blondel &lt;<a class="reference external" href="mailto:mathieu&#37;&#52;&#48;mblondel&#46;org">mathieu<span>&#64;</span>mblondel<span>&#46;</span>org</a>&gt;
+Tom Dupre la Tour
+Chih-Jen Lin, National Taiwan University</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>X</strong> : array-like, shape (n_samples, n_features)</p>
+<blockquote>
+<div><p>The data matrix to be decomposed.</p>
+</div></blockquote>
+<p><strong>n_components</strong> : integer</p>
+<blockquote>
+<div><p>The number of components desired in the approximation.</p>
+</div></blockquote>
+<p><strong>init</strong> :  None | ‘random’ | ‘smart_random’ | ‘nndsvd’ | ‘nndsvda’ |</p>
+<p><strong>‘nndsvdar’ | ‘coherence_pmi’</strong></p>
+<blockquote>
+<div><p>Method used to initialize the procedure.
+Default: ‘nndsvdar’ if n_components &lt; n_features, otherwise ‘random’.
+Valid options:
+- ‘coherence_pmi’: beam search to maximize pointwise mutual information</p>
+<blockquote>
+<div><p>of m words in each topic</p>
+</div></blockquote>
+<ul class="simple">
+<li>‘random’: completely</li>
+<li><dl class="first docutils">
+<dt>‘smart_random’: non-negative random matrices, scaled with:</dt>
+<dd>sqrt(X.mean() / n_components)</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>‘nndsvd’: Nonnegative Double Singular Value Decomposition (NNDSVD)</dt>
+<dd>initialization (better for sparseness)</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>‘nndsvda’: NNDSVD with zeros filled with the average of X</dt>
+<dd>(better when sparsity is not desired)</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>‘nndsvdar’: NNDSVD with zeros filled with small random values</dt>
+<dd>(generally faster, less accurate alternative to NNDSVDa
+for when sparsity is not desired)</dd>
+</dl>
+</li>
+<li>‘custom’: use custom matrices W and H</li>
+</ul>
+</div></blockquote>
+<p><strong>eps</strong> : float</p>
+<blockquote>
+<div><p>Truncate all values less then this in output to zero.</p>
+</div></blockquote>
+<p><strong>n_words_beam: int</strong></p>
+<blockquote>
+<div><p>number of words to use to beam search for in coherence_pmi init</p>
+</div></blockquote>
+<p><strong>random_state</strong> : int seed, RandomState instance, or None (default)</p>
+<blockquote>
+<div><p>Random number generator seed control, used in ‘nndsvdar’ and
+‘random’ modes.</p>
+</div></blockquote>
+<p><strong>Returns</strong></p>
+<p><strong>——-</strong></p>
+<p><strong>W</strong> : array-like, shape (n_samples, n_components)</p>
+<blockquote>
+<div><p>Initial guesses for solving X ~= WH</p>
+</div></blockquote>
+<p><strong>H</strong> : array-like, shape (n_components, n_features)</p>
+<blockquote>
+<div><p>Initial guesses for solving X ~= WH</p>
+</div></blockquote>
+<p><strong>References</strong></p>
+<p><strong>———-</strong></p>
+<p><strong>C. Boutsidis, E. Gallopoulos: SVD based initialization: A head start for</strong></p>
+<p><strong>nonnegative matrix factorization - Pattern Recognition, 2008</strong></p>
+<p class="last"><strong>http://tinyurl.com/nndsvd</strong></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-rri_nmf.matrixops">
+<span id="rri-nmf-matrixops-module"></span><h2>rri_nmf.matrixops module<a class="headerlink" href="#module-rri_nmf.matrixops" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="rri_nmf.matrixops.euclidean_proj_simplex">
+<code class="descname">euclidean_proj_simplex</code><span class="sig-paren">(</span><em>v_in</em>, <em>s=1</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/matrixops.html#euclidean_proj_simplex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.matrixops.euclidean_proj_simplex" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compute the Euclidean projection on a positive simplex</p>
+<p>Solves the optimisation problem (using the algorithm from [1]):</p>
+<blockquote>
+<div>min_w 0.5 * || w - v ||_2^2 , s.t. sum_i w_i = s, w_i &gt;= 0</div></blockquote>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>v: (n,) numpy array,</strong></p>
+<blockquote>
+<div><p>n-dimensional vector to project</p>
+</div></blockquote>
+<p><strong>s: int, optional, default: 1,</strong></p>
+<blockquote>
+<div><p>radius of the simplex</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">w: (n,) numpy array,</p>
+<blockquote class="last">
+<div><p>Euclidean projection of v on the simplex</p>
+</div></blockquote>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>The complexity of this algorithm is in O(n log(n)) as it involves sorting v.
+Better alternatives exist for high-dimensional sparse vectors (cf. [1])
+However, this implementation still easily scales to millions of dimensions.</p>
+<p class="rubric">References</p>
+<dl class="docutils">
+<dt>[1] Efficient Projections onto the .1-Ball for Learning in High Dimensions</dt>
+<dd>John Duchi, Shai Shalev-Shwartz, Yoram Singer, and Tushar Chandra.
+International Conference on Machine Learning (ICML 2008)
+<a class="reference external" href="http://www.cs.berkeley.edu/~jduchi/projects/DuchiSiShCh08.pdf">http://www.cs.berkeley.edu/~jduchi/projects/DuchiSiShCh08.pdf</a></dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.matrixops.harden_distributions">
+<code class="descname">harden_distributions</code><span class="sig-paren">(</span><em>W</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/matrixops.html#harden_distributions"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.matrixops.harden_distributions" title="Permalink to this definition">¶</a></dt>
+<dd><p>If each row of W represents a distribution over columns, set the
+column with highest probability to 1</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.matrixops.labels_to_mat">
+<code class="descname">labels_to_mat</code><span class="sig-paren">(</span><em>y</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/matrixops.html#labels_to_mat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.matrixops.labels_to_mat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Transforms a (n,) sample label vector to a (n,k) array where each row
+is a probability distribution over labels</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.matrixops.normalize">
+<code class="descname">normalize</code><span class="sig-paren">(</span><em>X</em>, <em>dim=1</em>, <em>zero_sum_fix=True</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/matrixops.html#normalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.matrixops.normalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize X’s dim to sum to 1.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>X</strong> (<em>scipy matrix</em>) – scipy matrix of shape (n,d)</li>
+<li><strong>dim</strong> – dimension along which to normalize. 1 (default) corresponds to</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>rows, 0 corresponds to columns
+:type dim: int</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>zero_sum_fix</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#bool" title="(in Python v2.7)"><em>bool</em></a>) – for rows/columns that sum to 0, replace all entries
+with 1/d or 1/n</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.matrixops.normalize_l2">
+<code class="descname">normalize_l2</code><span class="sig-paren">(</span><em>X</em>, <em>dim=1</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/matrixops.html#normalize_l2"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.matrixops.normalize_l2" title="Permalink to this definition">¶</a></dt>
+<dd><p>Normalize X’s dims to have l2 norm = 1</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>X</strong> (<em>numpy array</em>) – nparray of shape (n,d)</li>
+<li><strong>dim</strong> (<a class="reference external" href="https://docs.python.org/2/library/functions.html#int" title="(in Python v2.7)"><em>int</em></a>) – dimension along which to normalize 1 (default): rows
+0: columns</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.matrixops.proj_mat_to_simplex">
+<code class="descname">proj_mat_to_simplex</code><span class="sig-paren">(</span><em>W</em>, <em>s=1.0</em>, <em>axis=1</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/matrixops.html#proj_mat_to_simplex"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.matrixops.proj_mat_to_simplex" title="Permalink to this definition">¶</a></dt>
+<dd><p>project mat onto simplex, minimizing ell_2 recons err s.t. vectors along
+axis have ell_1 norm s</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>W: ndarray (n,d)</strong></p>
+<p><strong>s: float or ndarray (n,) or (d,), global or elementwise of simplex.</strong></p>
+<blockquote>
+<div><p>default: 1.0</p>
+</div></blockquote>
+<p><strong>axis: int, vectors along which to project. E.g. 1-&gt; rows will be projected.</strong></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">W: ndarray (n,d)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.matrixops.stack_matrices">
+<code class="descname">stack_matrices</code><span class="sig-paren">(</span><em>L</em>, <em>dict_key=None</em>, <em>transform=None</em>, <em>dim='tall'</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/matrixops.html#stack_matrices"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.matrixops.stack_matrices" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stack a list of matrices, either horizontally or vertically</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>L</strong> – the list of (matrices) or (dicts of matrices) to stack.</li>
+<li><strong>dict_key</strong> – if L is a list of dicts, then the key of which element of
+each dict should be stacked. If L is a list of matrices
+then None (default).</li>
+<li><strong>transform</strong> – f:ndarray-&gt;ndarray to transform each matrix
+before stacking (default is None)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="docutils">
+<dt>:param dim should the result be tall (default) or fat?</dt>
+<dd>‘tall’=&gt; vstack, ‘fat’=&gt; hstack</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a single ndarray of the transformed matrices</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.matrixops.tfidf">
+<code class="descname">tfidf</code><span class="sig-paren">(</span><em>X</em>, <em>return_idf=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/matrixops.html#tfidf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.matrixops.tfidf" title="Permalink to this definition">¶</a></dt>
+<dd><p>X is n docs * d features. Transform it to TFIDF.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-rri_nmf.nmf">
+<span id="rri-nmf-nmf-module"></span><h2>rri_nmf.nmf module<a class="headerlink" href="#module-rri_nmf.nmf" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="rri_nmf.nmf.TrueObjComputer">
+<em class="property">class </em><code class="descname">TrueObjComputer</code><span class="sig-paren">(</span><em>X</em>, <em>reg_w_l2</em>, <em>reg_t_l2</em>, <em>reg_w_l1</em>, <em>reg_t_l1</em>, <em>Wm</em>, <em>wr</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/nmf.html#TrueObjComputer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.nmf.TrueObjComputer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/2/library/functions.html#object" title="(in Python v2.7)"><code class="xref py py-class docutils literal"><span class="pre">object</span></code></a></p>
+<p class="rubric">Methods</p>
+<dl class="method">
+<dt id="rri_nmf.nmf.TrueObjComputer.true_objective">
+<code class="descname">true_objective</code><span class="sig-paren">(</span><em>X</em>, <em>W</em>, <em>T</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/nmf.html#TrueObjComputer.true_objective"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.nmf.TrueObjComputer.true_objective" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.nmf.nmf">
+<code class="descname">nmf</code><span class="sig-paren">(</span><em>X</em>, <em>k</em>, <em>w_row=None</em>, <em>W_mat=None</em>, <em>fix_W=False</em>, <em>fix_T=False</em>, <em>random_state=None</em>, <em>init='nndsvd'</em>, <em>T_in=[]</em>, <em>W_in=[]</em>, <em>max_iter=200</em>, <em>max_time=600</em>, <em>eps_stop=0.0001</em>, <em>compute_obj_each_iter=False</em>, <em>project_W_each_iter=False</em>, <em>w_row_sum=None</em>, <em>project_T_each_iter=True</em>, <em>t_row_sum=1.0</em>, <em>early_stop=None</em>, <em>reset_topic_method='random'</em>, <em>fix_reset_seed=False</em>, <em>reg_w_l2=0</em>, <em>reg_t_l2=0</em>, <em>reg_w_l1=0</em>, <em>reg_t_l1=0</em>, <em>negative_denom_correction=True</em>, <em>damping_w=0</em>, <em>damping_t=0</em>, <em>diagnostics=[]</em>, <em>store_intermediate=False</em>, <em>ind_rows_to_store=None</em>, <em>eps_gauss_t=None</em>, <em>delta_gauss_t=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/nmf.html#nmf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.nmf.nmf" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>X</strong> : array_like</p>
+<blockquote>
+<div><p>The n*d document-feature ndarray to be factorized.</p>
+</div></blockquote>
+<p><strong>k</strong> : int</p>
+<blockquote>
+<div><p>Number of latent factors, i.e. the rank of the factorization.</p>
+</div></blockquote>
+<p><strong>w_row</strong></p>
+<p><strong>W_mat</strong></p>
+<p><strong>fix_W</strong></p>
+<p><strong>fix_T</strong></p>
+<p><strong>random_state</strong></p>
+<p><strong>init</strong></p>
+<p><strong>T_in</strong></p>
+<p><strong>W_in</strong></p>
+<p><strong>debug</strong></p>
+<p><strong>max_iter</strong></p>
+<p><strong>max_time</strong></p>
+<p><strong>eps_stop</strong></p>
+<p><strong>compute_obj_each_iter</strong></p>
+<p><strong>project_W_each_iter</strong></p>
+<p><strong>w_row_sum</strong></p>
+<p><strong>project_T_each_iter</strong></p>
+<p><strong>t_row_sum</strong></p>
+<p><strong>early_stop</strong></p>
+<p><strong>reset_topic_method</strong></p>
+<p><strong>fix_reset_seed</strong></p>
+<p><strong>reg_w_l2</strong></p>
+<p><strong>reg_t_l2</strong></p>
+<p><strong>reg_w_l1</strong></p>
+<p><strong>reg_t_l1</strong></p>
+<p><strong>negative_denom_correction</strong></p>
+<p><strong>saddle_point_handling</strong></p>
+<p><strong>damping_w</strong></p>
+<p><strong>damping_t</strong></p>
+<p><strong>diagnostics</strong></p>
+<p><strong>store_intermediate</strong></p>
+<p><strong>ind_rows_to_store</strong></p>
+<p><strong>n_words_beam</strong></p>
+<p><strong>eps_gauss_t</strong></p>
+<p class="last"><strong>delta_gauss_t</strong></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-rri_nmf.optimization">
+<span id="rri-nmf-optimization-module"></span><h2>rri_nmf.optimization module<a class="headerlink" href="#module-rri_nmf.optimization" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="rri_nmf.optimization.first_last_stopping_condition">
+<code class="descname">first_last_stopping_condition</code><span class="sig-paren">(</span><em>obj_history</em>, <em>eps_stop=0.0001</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/optimization.html#first_last_stopping_condition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.optimization.first_last_stopping_condition" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.optimization.qf_min">
+<code class="descname">qf_min</code><span class="sig-paren">(</span><em>w</em>, <em>c</em>, <em>s=1.0</em>, <em>w_correction=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/optimization.html#qf_min"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.optimization.qf_min" title="Permalink to this definition">¶</a></dt>
+<dd><p><span class="math">\(min_{0&lt;=x&lt;=1} &lt;w,x&gt; + 0.5*c&lt;x,x&gt; s.t. sum(x)=s\)</span></p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>w: ndarray of linear coefficients</strong></p>
+<p><strong>c: scalar coefficient for quadratic term</strong></p>
+<p class="last"><strong>s: float or None sum constraint for x</strong></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="rri_nmf.optimization.universal_stopping_condition">
+<code class="descname">universal_stopping_condition</code><span class="sig-paren">(</span><em>obj_history</em>, <em>eps_stop=0.0001</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/optimization.html#universal_stopping_condition"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.optimization.universal_stopping_condition" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if last change in objective is &lt;= eps_stop * first change</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-rri_nmf.sklearn_interface">
+<span id="rri-nmf-sklearn-interface-module"></span><h2>rri_nmf.sklearn_interface module<a class="headerlink" href="#module-rri_nmf.sklearn_interface" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="rri_nmf.sklearn_interface.NMF_RS_Estimator">
+<em class="property">class </em><code class="descname">NMF_RS_Estimator</code><span class="sig-paren">(</span><em>n</em>, <em>d</em>, <em>k</em>, <em>wr1=0</em>, <em>wr2=0</em>, <em>tr1=0</em>, <em>tr2=0</em>, <em>random_state=0</em>, <em>W=array([]</em>, <em>dtype=float64)</em>, <em>T=array([]</em>, <em>dtype=float64)</em>, <em>max_iter=30</em>, <em>nmf_kwargs={}</em>, <em>use_early_stopping=True</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_RS_Estimator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_RS_Estimator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">sklearn.base.BaseEstimator</span></code></p>
+<p class="rubric">Methods</p>
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_RS_Estimator.densify">
+<code class="descname">densify</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_RS_Estimator.densify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_RS_Estimator.densify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_RS_Estimator.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>X</em>, <em>y=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_RS_Estimator.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_RS_Estimator.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>X - n*2 indexes, i.e. (i, j) pairs
+y - n*1 values of X[i,j]</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_RS_Estimator.fit_from_Xtr">
+<code class="descname">fit_from_Xtr</code><span class="sig-paren">(</span><em>Xtr</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_RS_Estimator.fit_from_Xtr"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_RS_Estimator.fit_from_Xtr" title="Permalink to this definition">¶</a></dt>
+<dd><p>construct X,y from Xtr and send it to fit</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_RS_Estimator.make_Xpred">
+<code class="descname">make_Xpred</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_RS_Estimator.make_Xpred"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_RS_Estimator.make_Xpred" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_RS_Estimator.predict">
+<code class="descname">predict</code><span class="sig-paren">(</span><em>X</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_RS_Estimator.predict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_RS_Estimator.predict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_RS_Estimator.score">
+<code class="descname">score</code><span class="sig-paren">(</span><em>X</em>, <em>y=array([]</em>, <em>dtype=float64)</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_RS_Estimator.score"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_RS_Estimator.score" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return RMSE of predictions</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_RS_Estimator.sparsify">
+<code class="descname">sparsify</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_RS_Estimator.sparsify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_RS_Estimator.sparsify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_RS_Estimator.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>Xnew</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_RS_Estimator.transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_RS_Estimator.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>express Xnew in terms of topics self.T</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="rri_nmf.sklearn_interface.NMF_TM_Estimator">
+<em class="property">class </em><code class="descname">NMF_TM_Estimator</code><span class="sig-paren">(</span><em>n</em>, <em>d</em>, <em>k</em>, <em>wr1=0</em>, <em>wr2=0</em>, <em>tr1=0</em>, <em>tr2=0</em>, <em>random_state=0</em>, <em>handle_tfidf=False</em>, <em>handle_normalization=False</em>, <em>max_iter=300</em>, <em>W=array([]</em>, <em>dtype=float64)</em>, <em>T=array([]</em>, <em>dtype=float64)</em>, <em>nmf_kwargs={}</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_TM_Estimator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_TM_Estimator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">sklearn.base.BaseEstimator</span></code>, <code class="xref py py-class docutils literal"><span class="pre">sklearn.base.TransformerMixin</span></code></p>
+<p class="rubric">Methods</p>
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_TM_Estimator.constrained_transform">
+<code class="descname">constrained_transform</code><span class="sig-paren">(</span><em>X</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_TM_Estimator.constrained_transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_TM_Estimator.constrained_transform" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_TM_Estimator.densify">
+<code class="descname">densify</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_TM_Estimator.densify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_TM_Estimator.densify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_TM_Estimator.fit">
+<code class="descname">fit</code><span class="sig-paren">(</span><em>X</em>, <em>y=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_TM_Estimator.fit"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_TM_Estimator.fit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_TM_Estimator.fit_transform">
+<code class="descname">fit_transform</code><span class="sig-paren">(</span><em>X</em>, <em>y=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_TM_Estimator.fit_transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_TM_Estimator.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>X - n*d</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_TM_Estimator.one_iter">
+<code class="descname">one_iter</code><span class="sig-paren">(</span><em>X</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_TM_Estimator.one_iter"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_TM_Estimator.one_iter" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_TM_Estimator.score">
+<code class="descname">score</code><span class="sig-paren">(</span><em>X</em>, <em>y=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_TM_Estimator.score"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_TM_Estimator.score" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return R^2 of new X</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_TM_Estimator.sparsify">
+<code class="descname">sparsify</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_TM_Estimator.sparsify"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_TM_Estimator.sparsify" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="method">
+<dt id="rri_nmf.sklearn_interface.NMF_TM_Estimator.transform">
+<code class="descname">transform</code><span class="sig-paren">(</span><em>Xnew</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/sklearn_interface.html#NMF_TM_Estimator.transform"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.sklearn_interface.NMF_TM_Estimator.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>express Xnew in terms of topics self.T</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Maksim Tsikhanovich.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -3,7 +3,7 @@ from matrixops import euclidean_proj_simplex
 
 
 def qf_min(w, c, s=1.0, w_correction=False):
-    """min_{0<=x<=1} <w,x> + 0.5*c<x,x> s.t. sum(x)=s
+    """:math:`min_{0<=x<=1} <w,x> + 0.5*c<x,x> s.t. sum(x)=s`
 
     Parameters
     ----------

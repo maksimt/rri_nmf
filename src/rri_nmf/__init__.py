@@ -4,3 +4,5 @@
 import rri_nmf.nmf
 import rri_nmf.matrixops
 import rri_nmf.optimization
+__all__ = ['nmf', 'initialization', 'optimization', 'matrixops',
+           'sklearn_interface']
