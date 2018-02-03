@@ -21,62 +21,16 @@ from scipy.stats import norm as gaussian
 # local packages
 # ==============
 from matrixops import (
-    euclidean_proj_simplex, normalize, stack_matrices, tfidf,
+    euclidean_proj_simplex, normalize, stack_matrices,
     proj_mat_to_simplex
 )
 from optimization import (
-    first_last_stopping_condition, universal_stopping_condition
+    first_last_stopping_condition, universal_stopping_condition, qf_min
 )
 from initialization import initialize_nmf
 # ------------------------------------------------------------------------------
 
-
-# experimental topic reset:
-def iterative_minimizer(M, n_iter=10, random_state=0):
-    raise NotImplementedError('Current Implementation returns nans')
-    n, d = M.shape
-    np.random.seed(random_state)
-    x = np.random.rand(n, 1)
-    yt = np.random.rand(1, d)
-    for _ in range(n_iter):
-        x = np.maximum(np.dot(M, yt.T), 0) / np.sum(yt**2)
-        yt = np.maximum(np.dot(x.T, M), 0) / np.sum(x**2)
-    return x, yt.T
-
-
-def qf_min(w, c, s=1.0, w_correction=False):
-    """min_{0<=x<=1} <w,x> + 0.5*c<x,x> s.t. sum(x)=s
-    Parameters
-    ----------
-    w: ndarray of linear coefficients
-    c: scalar coefficient for quadratic term
-    s: float or None sum constraint for x
-    w_correction: specific to finding columns of W in RRI_NMF; should be
-        false by default, otherwise try to set them proportional to objective
-        gain so we have a decent solution after row-wise normalization
-    """
-    if np.all(c > 0):
-        x = -w / (np.spacing(1) + c)
-        return euclidean_proj_simplex(x, s)
-    if np.any(c <= 0):
-        x = np.zeros_like(w)
-        if s:
-            I = np.argsort(w + c)
-            _s = int(floor(s))
-            r = s - _s
-            x[I[0:_s]] = 1
-            if r > 0:
-                x[I[_s]] = r
-        else:
-            if not w_correction:
-                x[np.argwhere(w + c < 0)] = 1
-            else:
-                d = w + c
-                I = np.argwhere(d < 0)
-                x[I] = d[I]**2  # we place the actual values here so when we
-                # project onto the simplex, the more important values will be
-                #  saved
-        return x.reshape(w.shape)
+debug = 0
 
 
 class TrueObjComputer(object):
@@ -109,14 +63,62 @@ class TrueObjComputer(object):
 
 # @jit
 def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
-        random_state=None, init='nndsvd', T_in=[], W_in=[], debug=0,
+        random_state=None, init='nndsvd', T_in=[], W_in=[],
         max_iter=200, max_time=600, eps_stop=1e-4, compute_obj_each_iter=False,
-        project_W_each_iter=False, w_row_sum=None, project_T_each_iter=True,
-        t_row_sum=1.0, early_stop=None, reset_topic_method='random',
-        fix_reset_seed=False, reg_w_l2=0, reg_t_l2=0, reg_w_l1=0, reg_t_l1=0,
-        negative_denom_correction=True, saddle_point_handling='exception',
+        project_W_each_iter=False, w_row_sum=None,
+        project_T_each_iter=True, t_row_sum=1.0,
+        early_stop=None, reset_topic_method='random', fix_reset_seed=False,
+        reg_w_l2=0, reg_t_l2=0, reg_w_l1=0, reg_t_l1=0,
+        negative_denom_correction=True,
         damping_w=0, damping_t=0, diagnostics=[], store_intermediate=False,
-        I_store=None, n_words_beam=20, eps_gauss_t=None, delta_gauss_t=None):
+        I_store=None, eps_gauss_t=None, delta_gauss_t=None):
+    """
+
+    Parameters
+    ----------
+    X
+    k
+    w_row
+    W_mat
+    fix_W
+    fix_T
+    random_state
+    init
+    T_in
+    W_in
+    debug
+    max_iter
+    max_time
+    eps_stop
+    compute_obj_each_iter
+    project_W_each_iter
+    w_row_sum
+    project_T_each_iter
+    t_row_sum
+    early_stop
+    reset_topic_method
+    fix_reset_seed
+    reg_w_l2
+    reg_t_l2
+    reg_w_l1
+    reg_t_l1
+    negative_denom_correction
+    saddle_point_handling
+    damping_w
+    damping_t
+    diagnostics
+    store_intermediate
+    I_store
+    n_words_beam
+    eps_gauss_t
+    delta_gauss_t
+
+    Returns
+    -------
+
+    """
+    global debug
+
     """ Factorize non-negative [n*d] X as  non-negative [n*k] W x [k*d] T
 
     :param X: ndarray of shape (n, d)
@@ -196,8 +198,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     :param delta_gauss_t : numeric delta for Gaussian mechanism for
         calculation of T in each iteration
     """
-    # TODO: early stopping based on splitting part of X into a validation set,
-    #        and not using that part to update T but use it for W
+
     rtv = {}
 
     if type(diagnostics) is not list:
@@ -222,10 +223,6 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
 
     _eps_div_by_zero = np.spacing(10)  # added to denominators to avoid /0
 
-    sparse_implemented = False
-    # scipy's sparse makes me cry
-    if not sparse_implemented and sparse.issparse(X):
-        X = X.toarray()
 
     X_orig = None
     if w_row is not None:
@@ -238,11 +235,8 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
             w_row_sum = np.sqrt(w_row_sum)  # rows of X will be multiplied by
             #  sqrt of w_row, so the rows of W should also sum to sqrt of w_row
 
-            # TODO: change row_normalize to be project_T_each_iter?
     if n <= k:
         init = 'random'
-
-    # import pdb; pdb.set_trace()
 
     def project_and_check_reset_t():
         nt1 = np.sum(T[t, :])
@@ -264,45 +258,12 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     np.random.seed(t)
                 T[t, :] = np.random.rand(1, d)
                 T[t, :] /= T[t, :].sum()
-            elif reset_topic_method == 'iterative_T_only':
-                _, y = iterative_minimizer(X - np.dot(W, T))
-                T[t, :] = y.T
-                T[t, :] /= T[t, :].sum()
-            elif reset_topic_method == 'iterative_refinement':
-                x, y = iterative_minimizer(X - np.dot(W, T))
-                T[t, :] = y.T
-                T[t, :] /= T[t, :].sum()
-                W[:, t] = x.ravel()
+
             if debug >= 5 and T[t, :].size <= 50:
                 print('\t\t\t\tReset to {}'.format(T[t, :]))
 
-    if np.prod(np.shape(W_in)) == 0 or np.prod(np.shape(T_in)) == 0:
-        if not W_mat is None:
-            W, T = initialize_nmf(W_mat * X, k, init, random_state=random_state,
-                                  row_normalize=False,
-                                  n_words_beam=n_words_beam)
-        else:
-            W, T = initialize_nmf(X, k, init, random_state=random_state,
-                                  row_normalize=False,
-                                  n_words_beam=n_words_beam)
-        if project_T_each_iter:
-            T = normalize(T) * t_row_sum
-            # if project_W_each_iter and not w_row_sum is None:
-            #    W = normalize(W) * w_row_sum
-    if np.prod(np.shape(W_in)) > 0:
-        if not np.shape(W_in) == (n, k):
-            raise ValueError('W_in has wrong dimensions, must be n*k')
-        W = W_in
 
-    if np.prod(np.shape(T_in)) > 0:
-        if not np.shape(T_in) == (k, d):
-            raise ValueError('T_in has wrong dimensions, must be k*d')
-        T = T_in
-
-    if scipy.sparse.issparse(T):
-        T = T.toarray()
-    if scipy.sparse.issparse(W):
-        W = W.toarray()
+    W, T = _initialize_and_validate(**locals())
 
     start_time = time.clock()
     iter_cputime = []  # time per iteration
@@ -316,9 +277,6 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         def rshp(x):
             """ make it (n,1) instead of (n,)"""
             return x.reshape(x.size, 1)
-
-        if not sparse_implemented and sparse.issparse(W_mat):
-            W_mat = W_mat.toarray()
 
     numexpr.set_num_threads(numexpr.detect_number_of_cores())
 
@@ -717,3 +675,32 @@ def _projected_gradient(grad, vec, lb=0, ub=1, zero=1e-10):
     rtv += np.sum(scipy.minimum(grad[vec <= lb], 0))
     rtv += np.sum(scipy.maximum(grad[vec >= ub], 0))
     return rtv
+
+def _initialize_and_validate(W_in, T_in, W_mat, X, k, init, random_state,
+                             project_T_each_iter, t_row_sum, n, d, **kwargs):
+    if np.prod(np.shape(W_in)) == 0 or np.prod(np.shape(T_in)) == 0:
+        if not W_mat is None:
+            W, T = initialize_nmf(W_mat * X, k, init, random_state=random_state,
+                                  row_normalize=False)
+        else:
+            W, T = initialize_nmf(X, k, init, random_state=random_state,
+                                  row_normalize=False)
+        if project_T_each_iter:
+            T = normalize(T) * t_row_sum
+            # if project_W_each_iter and not w_row_sum is None:
+            #    W = normalize(W) * w_row_sum
+    if np.prod(np.shape(W_in)) > 0:
+        if not np.shape(W_in) == (n, k):
+            raise ValueError('W_in has wrong dimensions, must be n*k')
+        W = W_in
+
+    if np.prod(np.shape(T_in)) > 0:
+        if not np.shape(T_in) == (k, d):
+            raise ValueError('T_in has wrong dimensions, must be k*d')
+        T = T_in
+
+    if scipy.sparse.issparse(T):
+        T = T.toarray()
+    if scipy.sparse.issparse(W):
+        W = W.toarray()
+    return W, T
