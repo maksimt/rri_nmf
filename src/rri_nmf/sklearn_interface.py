@@ -5,6 +5,8 @@ from sklearn.utils.validation import (
 from sklearn.utils.estimator_checks import check_estimator
 from sklearn.model_selection import train_test_split
 import inspect
+import numpy as np
+import scipy.sparse as sp
 
 
 class NMF_RS_Estimator(sklearn.base.BaseEstimator):

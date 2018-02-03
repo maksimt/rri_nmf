@@ -80,12 +80,14 @@ def qf_min(w, c, s=1.0, w_correction=False):
 
 
 class TrueObjComputer(object):
-    def __init__(self, X, reg_w_l2, reg_t_l2, reg_w_l1, reg_t_l1):
+    def __init__(self, X, reg_w_l2, reg_t_l2, reg_w_l1, reg_t_l1, Wm, wr):
         self.trXTX = np.sum(X**2)
         self.reg_w_l2 = reg_w_l2
         self.reg_t_l2 = reg_t_l2
         self.reg_t_l1 = reg_t_l1
         self.reg_w_l1 = reg_w_l1
+        self.Wm = Wm
+        self.wr = wr
 
     def true_objective(self, X, W, T):
         W2 = np.sum(W**2)
@@ -93,10 +95,13 @@ class TrueObjComputer(object):
         T1 = np.sum(np.abs(T))
         W1 = np.sum(np.abs(W))
 
-        # base_obj = 0.5*self.trXTX \
-        #            + np.trace(np.dot( np.dot(X,W), T)) \
-        #            + 0.5*W2*T2
-        base_obj = 0.5 * np.sum((X - np.dot(W, T))**2)
+        R = (X - np.dot(W, T))**2
+        if self.Wm is not None:
+            R = self.Wm * R
+        if self.wr is not None:
+            R = self.wr * R
+
+        base_obj = 0.5 * np.sum(R)
         obj = base_obj + self.reg_w_l2 * W2 + self.reg_t_l2 * T2 + \
               self.reg_t_l1 * T1 + self.reg_w_l1 * W1
         return obj
@@ -335,12 +340,11 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     if project_T_each_iter and not fix_T and not t_row_sum is None:
         T = proj_mat_to_simplex(T, t_row_sum)
 
+    obj_history = []
     if compute_obj_each_iter:
         OBJ = TrueObjComputer(X, reg_w_l1=reg_w_l1, reg_t_l2=reg_t_l2,
-                              reg_w_l2=reg_w_l2, reg_t_l1=reg_t_l1)
-        obj_history = [OBJ.true_objective(X, W, T)]  # obj after i iters
-    else:
-        obj_history = []
+                              reg_w_l2=reg_w_l2, reg_t_l1=reg_t_l1,
+                              Wm=W_mat, wr=w_row)
 
     if len(diagnostics) > 0:
         for func in diagnostics:
@@ -601,14 +605,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                 print('After projection:\n', W)
 
         if compute_obj_each_iter:
-            if not (W_mat is not None):
-                obj_history.append(OBJ.true_objective(X, W, T))
-            else:
-                warnings.warn(warnings.WarningMessage(
-                        'nmf: compute objective not supported if W_mat is '
-                        'input'))
-                Xh = np.dot(W, T)
-                # obj_history.append(np.sum((X[Ix, Jx] - Xh[Ix, Jx])**2))
+            obj_history.append(OBJ.true_objective(X, W, T))
             if debug >= 1:
                 print('Obj: {0:3.3e}'.format(obj_history[-1]))
         iter_cputime.append(time.clock())
@@ -698,7 +695,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         rtv['obj_history'] = obj_history
         rtv['obj_calculator'] = OBJ
     rtv['proj_gradient_norm'] = proj_gradient_norm
-    rtv['iter_cputime'] = [0] + iter_cputime
+    rtv['iter_cputime'] = iter_cputime
     rtv['random_state'] = random_state
 
     return rtv
