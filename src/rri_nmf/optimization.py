@@ -2,28 +2,45 @@ import numpy as np
 from matrixops import euclidean_proj_simplex
 
 
-def qf_min(w, c, s=1.0, w_correction=False):
-    """:math:`min_{0<=x<=1} <w,x> + 0.5*c<x,x> s.t. sum(x)=s`
+def qf_min(w, c, s=1.0):
+    """
+    Minimize a simple quadratic vector function.
+
+    :math:`min_{0<=x<=1,\, \sum x=s}\, f(x)\equiv w^Tx + 0.5x^Tdiag(c)x`
 
     Parameters
     ----------
-    w: ndarray of linear coefficients
-    c: scalar coefficient for quadratic term
-    s: float or None sum constraint for x
+    w : array_like
+        The linear cost coefficients
+    c : float
+        Scalar coefficient for quadratic term
+    s : float or None, optional
+        Sum constraint for x, default is 1.0
 
+    Returns
+    -------
+    x : array_like
+        The vector x, of same shape as w, that minimizes :math:`f(x)`.
     """
     if np.isscalar(c):
         if c > 0:
-            x = -w / c
+            x = np.maximum(-w, 0) / c
             # it's correct to project to simplex here since c>0 makes
             # this p.d. and hence convex
-            return euclidean_proj_simplex(x, s)
-        if c <= 0:
+            if s is not None:
+                x = euclidean_proj_simplex(x, s)
+        elif c <= 0:
             i = np.argmin(w)
             x = np.zeros_like(w)
             x[i] = s
+    elif np.shape(w) == np.shape(c):
+        I = np.argwhere(c>0)
+        x = np.zeros_like(w)
+        x[I] = np.maximum(-w[I], 0) / c[I]
+        # Ho Thesis Alg10 Line18 (pg 119) says to leave everything else 0
+        # TODO: this is incorrect in the presence of regularization parameters
 
-    return x.reshape(w.shape)
+    return x
 
 def universal_stopping_condition(obj_history, eps_stop=1e-4):
     """ Check if last change in objective is <= eps_stop * first change"""

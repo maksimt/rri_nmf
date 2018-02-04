@@ -157,15 +157,25 @@
 <span class="kn">from</span> <span class="nn">matrixops</span> <span class="k">import</span> <span class="n">euclidean_proj_simplex</span>
 
 
-<div class="viewcode-block" id="qf_min"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.optimization.qf_min">[docs]</a><span class="k">def</span> <span class="nf">qf_min</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">w_correction</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;:math:`min_{0&lt;=x&lt;=1} &lt;w,x&gt; + 0.5*c&lt;x,x&gt; s.t. sum(x)=s`</span>
+<div class="viewcode-block" id="qf_min"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.optimization.qf_min">[docs]</a><span class="k">def</span> <span class="nf">qf_min</span><span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mf">1.0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Minimize a simple quadratic vector function.</span>
+
+<span class="sd">    :math:`min_{0&lt;=x&lt;=1,\, \sum x=s}\, f(x)\equiv w^Tx + 0.5c x^Tx`</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
-<span class="sd">    w: ndarray of linear coefficients</span>
-<span class="sd">    c: scalar coefficient for quadratic term</span>
-<span class="sd">    s: float or None sum constraint for x</span>
+<span class="sd">    w : array_like</span>
+<span class="sd">        The linear cost coefficients</span>
+<span class="sd">    c : float</span>
+<span class="sd">        Scalar coefficient for quadratic term</span>
+<span class="sd">    s : float or None, optional</span>
+<span class="sd">        Sum constraint for x, default is 1.0</span>
 
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    x : array_like</span>
+<span class="sd">        The vector x, of same shape as w, that minimizes :math:`f(x)`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">c</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">c</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>

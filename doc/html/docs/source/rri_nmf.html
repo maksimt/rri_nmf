@@ -458,7 +458,14 @@ before stacking (default is None)</li>
 <dl class="function">
 <dt id="rri_nmf.nmf.nmf">
 <code class="descname">nmf</code><span class="sig-paren">(</span><em>X</em>, <em>k</em>, <em>w_row=None</em>, <em>W_mat=None</em>, <em>fix_W=False</em>, <em>fix_T=False</em>, <em>random_state=None</em>, <em>init='nndsvd'</em>, <em>T_in=[]</em>, <em>W_in=[]</em>, <em>max_iter=200</em>, <em>max_time=600</em>, <em>eps_stop=0.0001</em>, <em>compute_obj_each_iter=False</em>, <em>project_W_each_iter=False</em>, <em>w_row_sum=None</em>, <em>project_T_each_iter=True</em>, <em>t_row_sum=1.0</em>, <em>early_stop=None</em>, <em>reset_topic_method='random'</em>, <em>fix_reset_seed=False</em>, <em>reg_w_l2=0</em>, <em>reg_t_l2=0</em>, <em>reg_w_l1=0</em>, <em>reg_t_l1=0</em>, <em>negative_denom_correction=True</em>, <em>damping_w=0</em>, <em>damping_t=0</em>, <em>diagnostics=[]</em>, <em>store_intermediate=False</em>, <em>ind_rows_to_store=None</em>, <em>eps_gauss_t=None</em>, <em>delta_gauss_t=None</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/nmf.html#nmf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.nmf.nmf" title="Permalink to this definition">¶</a></dt>
-<dd><table class="docutils field-list" frame="void" rules="none">
+<dd><p>Compute the non-negative matrix factorization.</p>
+<p>Factorize the n*d document*feature matrix <cite>X</cite> into the product <cite>WT</cite>
+where <cite>W</cite> is a non-negative n*k doc*topic matrix and <cite>T</cite> is a
+non-negative k*d topic*feature matrix. We use the term ‘topic’s to refer
+to latent basis vectors. Documents are expressed as non-negative linear
+combinations of topics.</p>
+<p><span class="math">\(\min_{W\geq 0, T\geq 0} ||X-WT||_F^2 + wr1||W||_1 + wr2||W||_2^2 + tr1||T||_1 + tr2||T||_2^2\)</span></p>
+<table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
@@ -470,7 +477,7 @@ before stacking (default is None)</li>
 <blockquote>
 <div><p>Number of latent factors, i.e. the rank of the factorization.</p>
 </div></blockquote>
-<p><strong>w_row</strong></p>
+<p><strong>w_row</strong> : array_like</p>
 <p><strong>W_mat</strong></p>
 <p><strong>fix_W</strong></p>
 <p><strong>fix_T</strong></p>
@@ -503,7 +510,17 @@ before stacking (default is None)</li>
 <p><strong>ind_rows_to_store</strong></p>
 <p><strong>n_words_beam</strong></p>
 <p><strong>eps_gauss_t</strong></p>
-<p class="last"><strong>delta_gauss_t</strong></p>
+<p><strong>delta_gauss_t</strong></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>W</strong> : array_like</p>
+<blockquote>
+<div><p>n * k doc-topic weight matrix</p>
+</div></blockquote>
+<p><strong>T</strong> : array_like</p>
+<blockquote class="last">
+<div><p>k * d topic-feature matrix</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>
@@ -520,15 +537,31 @@ before stacking (default is None)</li>
 
 <dl class="function">
 <dt id="rri_nmf.optimization.qf_min">
-<code class="descname">qf_min</code><span class="sig-paren">(</span><em>w</em>, <em>c</em>, <em>s=1.0</em>, <em>w_correction=False</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/optimization.html#qf_min"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.optimization.qf_min" title="Permalink to this definition">¶</a></dt>
-<dd><p><span class="math">\(min_{0&lt;=x&lt;=1} &lt;w,x&gt; + 0.5*c&lt;x,x&gt; s.t. sum(x)=s\)</span></p>
+<code class="descname">qf_min</code><span class="sig-paren">(</span><em>w</em>, <em>c</em>, <em>s=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="../../_modules/rri_nmf/optimization.html#qf_min"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#rri_nmf.optimization.qf_min" title="Permalink to this definition">¶</a></dt>
+<dd><p>Minimize a simple quadratic vector function.</p>
+<p><span class="math">\(min_{0&lt;=x&lt;=1,\, \sum x=s}\, f(x)\equiv w^Tx + 0.5c x^Tx\)</span></p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>w: ndarray of linear coefficients</strong></p>
-<p><strong>c: scalar coefficient for quadratic term</strong></p>
-<p class="last"><strong>s: float or None sum constraint for x</strong></p>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>w</strong> : array_like</p>
+<blockquote>
+<div><p>The linear cost coefficients</p>
+</div></blockquote>
+<p><strong>c</strong> : float</p>
+<blockquote>
+<div><p>Scalar coefficient for quadratic term</p>
+</div></blockquote>
+<p><strong>s</strong> : float or None, optional</p>
+<blockquote>
+<div><p>Sum constraint for x, default is 1.0</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><strong>x</strong> : array_like</p>
+<blockquote class="last">
+<div><p>The vector x, of same shape as w, that minimizes <span class="math">\(f(x)\)</span>.</p>
+</div></blockquote>
 </td>
 </tr>
 </tbody>

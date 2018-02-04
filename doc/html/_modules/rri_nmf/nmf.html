@@ -189,8 +189,6 @@
 <span class="n">eps_div_by_zero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">spacing</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># added to denominators to avoid /0</span>
 
 
-<span class="nb">print</span><span class="p">(</span><span class="s1">&#39;In rri_nmf.nmf&#39;</span><span class="p">)</span>
-
 <div class="viewcode-block" id="TrueObjComputer"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.nmf.TrueObjComputer">[docs]</a><span class="k">class</span> <span class="nc">TrueObjComputer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">reg_w_l2</span><span class="p">,</span> <span class="n">reg_t_l2</span><span class="p">,</span> <span class="n">reg_w_l1</span><span class="p">,</span> <span class="n">reg_t_l1</span><span class="p">,</span> <span class="n">Wm</span><span class="p">,</span> <span class="n">wr</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">trXTX</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">X</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
@@ -232,6 +230,15 @@
         <span class="n">store_intermediate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ind_rows_to_store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">eps_gauss_t</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">delta_gauss_t</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the non-negative matrix factorization.</span>
+
+<span class="sd">    Factorize the n*d document*feature matrix `X` into the product `WT`</span>
+<span class="sd">    where `W` is a non-negative n*k doc*topic matrix and `T` is a</span>
+<span class="sd">    non-negative k*d topic*feature matrix. We use the term &#39;topic&#39;s to refer</span>
+<span class="sd">    to latent basis vectors. Documents are expressed as non-negative linear</span>
+<span class="sd">    combinations of topics.</span>
+
+<span class="sd">    :math:`\min_{W\geq 0, T\geq 0} ||X-WT||_F^2 + wr1||W||_1 + wr2||W||_2^2 + tr1||T||_1 + tr2||T||_2^2`</span>
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
@@ -239,7 +246,8 @@
 <span class="sd">        The n*d document-feature ndarray to be factorized.</span>
 <span class="sd">    k : int</span>
 <span class="sd">        Number of latent factors, i.e. the rank of the factorization.</span>
-<span class="sd">    w_row</span>
+<span class="sd">    w_row : array_like</span>
+
 <span class="sd">    W_mat</span>
 <span class="sd">    fix_W</span>
 <span class="sd">    fix_T</span>
@@ -276,6 +284,10 @@
 
 <span class="sd">    Returns</span>
 <span class="sd">    -------</span>
+<span class="sd">    W : array_like</span>
+<span class="sd">        n * k doc-topic weight matrix</span>
+<span class="sd">    T : array_like</span>
+<span class="sd">        k * d topic-feature matrix</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">global</span> <span class="n">debug</span><span class="p">,</span> <span class="n">eps_div_by_zero</span>
