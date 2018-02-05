@@ -1,6 +1,7 @@
 import numpy as np
 from matrixops import euclidean_proj_simplex
 
+eps_div_by_zero = np.spacing(10)
 
 def qf_min(w, c, s=1.0):
     """
@@ -24,19 +25,28 @@ def qf_min(w, c, s=1.0):
     """
     if np.isscalar(c):
         if c > 0:
-            x = np.maximum(-w, 0) / c
+            x = np.maximum(-w, 0) / (c + eps_div_by_zero)
             # it's correct to project to simplex here since c>0 makes
             # this p.d. and hence convex
             if s is not None:
                 x = euclidean_proj_simplex(x, s)
         elif c <= 0:
-            i = np.argmin(w)
             x = np.zeros_like(w)
-            x[i] = s
+            if s is None:
+                I = np.argwhere(w+c<0)
+                x[I] = 1.0
+            elif s==1.0:
+                i = np.argmin(w)
+                x[i] = 1.0
+            else:
+                raise NotImplementedError('s={} is not yet '
+                                          'implemented'.format(s))
     elif np.shape(w) == np.shape(c):
         I = np.argwhere(c>0)
         x = np.zeros_like(w)
-        x[I] = np.maximum(-w[I], 0) / c[I]
+        x[I] = np.maximum(-w[I], 0) / (c[I] + eps_div_by_zero)
+        if s is not None:
+            x = euclidean_proj_simplex(x, s)
         # Ho Thesis Alg10 Line18 (pg 119) says to leave everything else 0
         # TODO: this is incorrect in the presence of regularization parameters
 

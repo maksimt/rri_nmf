@@ -69,7 +69,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         project_W_each_iter=False, w_row_sum=None, project_T_each_iter=True,
         t_row_sum=1.0, early_stop=None, reset_topic_method='random',
         fix_reset_seed=False, reg_w_l2=0, reg_t_l2=0, reg_w_l1=0, reg_t_l1=0,
-        negative_denom_correction=True, diagnostics=[], store_gradients=False,
+        diagnostics=[], store_gradients=False,
         ind_rows_to_store=None, eps_gauss_t=None, delta_gauss_t=None):
     """
     Compute the non-negative matrix factorization.
@@ -289,7 +289,14 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                   'iter_no}\n----------------------'.format(iter_no=iter_no))
 
         if early_stop:
-            this_score = early_stop(X, W, T)
+            if type(early_stop)==type(lambda x:x):
+                this_score = early_stop(X, W, T)
+            else:
+                if compute_obj_each_iter:
+                    if len(obj_history)==0:
+                        this_score = np.inf
+                    else:
+                        this_score = obj_history[-1]
             if debug >= 1:
                 print('Iter %d stopping score %.3f' % (iter_no, this_score))
             if this_score > last_score:  # STOP EARLY
@@ -297,6 +304,12 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     print('Stopping early at iter %d' % iter_no)
                 W = W_prev
                 T = T_prev
+                obj_history = obj_history[:-1]
+                iter_cputime = iter_cputime[:-1]
+                if len(diagnostics)>0:
+                    for func in diagnostics:
+                        rtv['diagnostics'][func.func_name] = rtv[
+                            'diagnostics'][func.func_name][:-1]
                 break
             # else this_score <= last_score
             last_score = this_score
@@ -339,10 +352,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                 if debug >= 3:
                     print('\t\t\tdenom (||W_t||+rt2) == {'
                           '0:.2e}+{1:.2e} = {2:.2e}'.format(nw, reg_t_l2,
-                                                            scipy.maximum(
-                                                                    nw +
-                                                                    reg_t_l2,
-                                                                    0)))
+                           scipy.maximum(nw +reg_t_l2, 0)))
 
                 if store_gradients:
                     rtv['numer_W'][iter_no].append(wR_store)
@@ -370,14 +380,15 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     print('\t\t\tdenom W (||T_t||+rw2) == {0:.2e}+{'
                           '1:.2e} = {2:.2e}'.format(nt, reg_w_l2,
                                                     nt + reg_w_l2))
+                W[:, t] = qf_min(-numer, denom, s=None)
 
                 _check_reset_W(**locals())
 
-                W[:, t] = qf_min(-numer, denom, s=None)
-
+                # this assertion is useful while qf_min is still under
+                # development, once qf_min is stable it can be removed
                 assert np.all(W[:, t] >= 0), 'W contains negative entries'
+                assert np.sum(W[:, t]) > 0, 'W[:, t] sums to 0'
 
-                # import pdb; pdb.set_trace()
                 grad = W[:, t] * denom - numer
                 grad = grad**2  # for purposes of computing Frob norm
                 if iter_no == 0:  # dont use proj grad on first iter (Lin 2007)
@@ -386,28 +397,27 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                                                                ub=np.inf)
                 else:
                     grad_norm_this_iter += _projected_gradient(grad, W[:, t])
-
+            # END for t in range(k)
         if project_W_each_iter and not fix_W and not w_row_sum is None:
             if debug >= 1:
                 print('\nAfter iter {iter_no} projecting each W row'.format(
                         iter_no=iter_no))
             if debug >= 5 and W.size <= 50:
                 print('Before projection:\n', W)
-            c = reg_w_l2 + np.sum(T**2)
-            if not negative_denom_correction or reg_w_l2 >= 0:
+            W = proj_mat_to_simplex(W, w_row_sum)
+
+            if reg_w_l2 >= 0:
                 if debug >= 2:
                     # print('\t\t\tlin={}'.format(-numer))
                     print('\t\t\tdenom > 0 using proj_to_simplex to proj W')
-                W = proj_mat_to_simplex(W, w_row_sum)
+
             else:
                 if debug >= 2:
                     # print('\t\t\tlin={}'.format(-numer))
                     print('\t\t\tdenom <= 0 using qf_min to proj W')
                 if debug >= 3:
                     obj_before = OBJ.true_objective(X, W, T)
-                for i in range(X.shape[0]):
-                    W[i, :] = qf_min(-2.0 * np.dot(T, X[i, :].T), c,
-                                     s=w_row_sum).reshape((1, k))
+
                 if debug >= 3:
                     obj_after = OBJ.true_objective(X, W, T)
                     print('\t\t\t\tChange in obj = {0:.2e}'.format(
@@ -533,8 +543,8 @@ def _projected_gradient(grad, vec, lb=0, ub=1):
     return rtv
 
 
-def _compute_update_T(W_mat, W, T, t, X, store_gradients, ind_rows_to_store,
-                      rshp=None, **kwargs):
+def _compute_update_T(W, T, t, X, store_gradients, ind_rows_to_store,
+                      rshp=None, W_mat=None, **kwargs):
     """
     Compute update to one row of T
 
@@ -570,7 +580,7 @@ def _compute_update_T(W_mat, W, T, t, X, store_gradients, ind_rows_to_store,
         Rt = X - np.dot(W, T) + np.dot(rshp(W[:, t]), rshp(T[t, :]).T)
         Rt = ne_eval('Rt * W_mat')
         wR = np.dot(W[:, t].T, Rt)
-        nw = np.dot(rshp(W[:, t]**2).T, W_mat).ravel()
+        nw = np.dot(W_mat.T, rshp(W[:, t]**2)).reshape(wR.shape)
         # this is a vector
         #  but python broadcasting implements Lemma 6.5 correct
         if store_gradients and ind_rows_to_store is None:
@@ -607,7 +617,7 @@ def _compute_update_W(W_mat, t, T, X, W, rshp=None, **kwargs):
         Rt = X - np.dot(W, T) + np.dot(rshp(W[:, t]), rshp(T[t, :]).T)
         Rt = ne_eval('W_mat * Rt')
         Rt = np.dot(Rt, T[t, :].T)
-        nt = np.dot(W_mat, rshp(T[t, :]**2)).ravel()
+        nt = np.dot(W_mat, rshp(T[t, :]**2)).reshape(Rt.shape)
     return Rt, nt
 
 
@@ -618,8 +628,8 @@ def _project_and_check_reset_t(T, W, X, t, d, project_T_each_iter, t_row_sum,
     """
     nt1 = np.sum(T[t, :])
 
-    if nt1 > 1e-10:
-        if project_T_each_iter:
+    if nt1 > 1e-10 or reset_topic_method==None:
+        if project_T_each_iter and np.abs(np.sum(T[t,:])-t_row_sum)>1e-15:
             T[t, :] = euclidean_proj_simplex(T[t, :], s=t_row_sum)
     else:  # pick the largest positive residual
         if debug >= 2:
@@ -640,14 +650,15 @@ def _project_and_check_reset_t(T, W, X, t, d, project_T_each_iter, t_row_sum,
             print('\t\t\t\tReset to {}'.format(T[t, :]))
 
 
-def _check_reset_W(W, T, n, d, t, reset_topic_method, fix_reset_seed, **kwargs):
+def _check_reset_W(W, T, n, d, t, iter_no, reset_topic_method, fix_reset_seed,
+                   **kwargs):
     """
     Reset column of w if it becomes 0.
     """
     global debug
 
     nw1 = np.sum(W[:, t])
-    if True or nw1 > 1e-10:
+    if nw1 > 1e-10 or reset_topic_method==None:
         pass
     else:  # pick the largest positive residual
         if debug >= 2:
@@ -673,8 +684,8 @@ def _initialize_and_validate(W_in, T_in, W_mat, X, k, init, random_state,
                              project_T_each_iter, project_W_each_iter,
                              w_row_sum, t_row_sum, fix_W, fix_T, n, d,
                              **kwargs):
-    """Initializes W, T, or sets them to W_in, T_in, respectively. Ensures
-    that W, T satisfy non-negativity and row-sum constraints.
+    """Initializes `W`, `T`, or sets them to `W_in`, `T_in`, respectively.
+    Ensures that `W`, `T` satisfy non-negativity and row-sum constraints.
 
     Parameters
     ----------
@@ -715,6 +726,9 @@ def _initialize_and_validate(W_in, T_in, W_mat, X, k, init, random_state,
         T = T.toarray()
     if scipy.sparse.issparse(W):
         W = W.toarray()
+
+    W = np.maximum(W, 0)
+    T = np.maximum(T, 0)
 
     if project_W_each_iter and not fix_W and not w_row_sum is None:
         if debug >= 1:
