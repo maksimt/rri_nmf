@@ -30,13 +30,23 @@ from initialization import initialize_nmf
 
 # ------------------------------------------------------------------------------
 
+# logging
+# =======
+import logging
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
+# ------------------------------------------------------------------------------
+
+
 debug = 0
 eps_div_by_zero = np.spacing(10)  # added to denominators to avoid /0
-
+OBJ = None  # will be instantiated from inside nmf()
 
 class TrueObjComputer(object):
-    def __init__(self, X, reg_w_l2, reg_t_l2, reg_w_l1, reg_t_l1, Wm, wr):
-        self.trXTX = np.sum(X**2)
+    def __init__(self, X, W, T, reg_w_l2, reg_t_l2, reg_w_l1, reg_t_l1, Wm, wr):
+        self.X = X
+        self.W = W
+        self.T = T
         self.reg_w_l2 = reg_w_l2
         self.reg_t_l2 = reg_t_l2
         self.reg_t_l1 = reg_t_l1
@@ -44,21 +54,21 @@ class TrueObjComputer(object):
         self.Wm = Wm
         self.wr = wr
 
-    def true_objective(self, X, W, T):
-        W2 = np.sum(W**2)
-        T2 = np.sum(T**2)
-        T1 = np.sum(np.abs(T))
-        W1 = np.sum(np.abs(W))
+    def true_objective(self):
+        W2 = np.sum(self.W**2)
+        T2 = np.sum(self.T**2)
+        T1 = np.sum(np.abs(self.T))
+        W1 = np.sum(np.abs(self.W))
 
-        R = (X - np.dot(W, T))**2
+        R = (self.X - np.dot(self.W, self.T))**2
         if self.Wm is not None:
             R = self.Wm * R
         if self.wr is not None:
             R = self.wr * R
 
         base_obj = 0.5 * np.sum(R)
-        obj = base_obj + self.reg_w_l2 * W2 + self.reg_t_l2 * T2 + \
-              self.reg_t_l1 * T1 + self.reg_w_l1 * W1
+        obj = base_obj + 0.5 * self.reg_w_l2 * W2 + 0.5 *self.reg_t_l2 * T2 + \
+              0.5 * self.reg_t_l1 * T1 + 0.5 * self.reg_w_l1 * W1
         return obj
 
 
@@ -105,7 +115,12 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     max_iter
     max_time
     eps_stop
-    compute_obj_each_iter
+    compute_obj_each_iter : bool, optional
+        Should the full NMF objective be computed for each iteration? False
+        by default; carries a 2x performance penalty due to current
+        implementation. It is set to True if `logger.level` <= logging.DEBUG.
+        It is also useful as a more general stopping condition than the
+        projected gradient norm-based stopping condition.
     project_W_each_iter
     w_row_sum
     project_T_each_iter
@@ -136,7 +151,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         k * d topic-feature matrix
 
     """
-    global debug, eps_div_by_zero
+    global debug, eps_div_by_zero, OBJ
 
     """ Factorize non-negative [n*d] X as  non-negative [n*k] W x [k*d] T
 
@@ -259,8 +274,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     # stopping condition. Thesis Ho section 3.5
 
     if W_mat is not None:
-        if debug >= 1:
-            print('WARNING: W_mat is O(k) slower than w_row or no weighting.')
+        logger.info('W_mat is k times slower than w_row or no weighting.')
 
         def rshp(x):
             """ make it (n,1) instead of (n,)"""
@@ -274,8 +288,10 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         T_prev = copy.deepcopy(T)
 
     obj_history = []
+    if logger.level <= logging.DEBUG:
+        compute_obj_each_iter = True
     if compute_obj_each_iter:
-        OBJ = TrueObjComputer(X, reg_w_l1=reg_w_l1, reg_t_l2=reg_t_l2,
+        OBJ = TrueObjComputer(X, W, T, reg_w_l1=reg_w_l1, reg_t_l2=reg_t_l2,
                               reg_w_l2=reg_w_l2, reg_t_l1=reg_t_l1, Wm=W_mat,
                               wr=w_row)
 
@@ -284,9 +300,8 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
             rtv['diagnostics'][func.func_name].append(func(X, W, T))
 
     for iter_no in range(max_iter):
-        if debug >= 1:
-            print('\nStarting iteration {'
-                  'iter_no}\n----------------------'.format(iter_no=iter_no))
+        logger.info('\n\n{s:^80}\n{e:-<80}'.format(
+            s='Iteration %d'%iter_no, e=''))
 
         if early_stop:
             if type(early_stop)==type(lambda x:x):
@@ -297,11 +312,9 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                         this_score = np.inf
                     else:
                         this_score = obj_history[-1]
-            if debug >= 1:
-                print('Iter %d stopping score %.3f' % (iter_no, this_score))
+            logger.info('Iter %d stopping score %.3f' % (iter_no, this_score))
             if this_score > last_score:  # STOP EARLY
-                if debug >= 1:
-                    print('Stopping early at iter %d' % iter_no)
+                logger.info('Stopping early at iter %d' % iter_no)
                 W = W_prev
                 T = T_prev
                 obj_history = obj_history[:-1]
@@ -326,33 +339,29 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
             rtv['denom_W'][iter_no] = []
 
         for t in range(k):
-            if debug >= 2:
-                print('\tTopic %d' % t)
+            logger.debug('\n\tTopic %d' % t)
             if not fix_T:
-                wR, nw, wR_store, nw_store = _compute_update_T(**locals())
 
-                if eps_gauss_t and delta_gauss_t:
-                    # both parameters are not None received.
-                    # The intent is to use the Gaussian differentially
-                    # private mechanism pg 261 of Dwork Roth Differential
-                    # Privacy
-                    c2 = 2 * np.log(1.25 / delta_gauss_t)
-                    df2 = 1.0  # an upper bound on the l2 sensitivity here
-                    sigma2 = c2 * df2**2 * (1 / eps_gauss_t)**2
-                    N = gaussian(0, np.sqrt(sigma2))  # scipy's norm takes mean,
-                    #  std
-                    wR += N.rvs(wR.size).reshape(wR.shape)
-                    nw += N.rvs(nw.size).reshape(nw.shape)
+                with MeasureDelta('update T'):
+                    wR, nw, wR_store, nw_store = _compute_update_T(**locals())
 
-                numer = (wR - reg_t_l1)
-                denom = nw + reg_t_l2
+                    if eps_gauss_t and delta_gauss_t:
+                        # both parameters are not None received.
+                        # The intent is to use the Gaussian differentially
+                        # private mechanism pg 261 of Dwork Roth Differential
+                        # Privacy
+                        c2 = 2 * np.log(1.25 / delta_gauss_t)
+                        df2 = 1.0  # an upper bound on the l2 sensitivity here
+                        sigma2 = c2 * df2**2 * (1 / eps_gauss_t)**2
+                        N = gaussian(0, np.sqrt(sigma2))  # scipy's norm takes mean,
+                        #  std
+                        wR += N.rvs(wR.size).reshape(wR.shape)
+                        nw += N.rvs(nw.size).reshape(nw.shape)
 
-                T[t, :] = qf_min(-numer, denom, s=t_row_sum)
+                    numer = (wR - reg_t_l1)
+                    denom = nw + reg_t_l2
 
-                if debug >= 3:
-                    print('\t\t\tdenom (||W_t||+rt2) == {'
-                          '0:.2e}+{1:.2e} = {2:.2e}'.format(nw, reg_t_l2,
-                           scipy.maximum(nw +reg_t_l2, 0)))
+                    T[t, :] = qf_min(-numer, denom, s=t_row_sum)
 
                 if store_gradients:
                     rtv['numer_W'][iter_no].append(wR_store)
@@ -371,16 +380,13 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     grad_norm_this_iter += _projected_gradient(grad, T[t, :])
 
             if not fix_W:
-                Rt, nt = _compute_update_W(**locals())
+                with MeasureDelta('update W'):
+                    Rt, nt = _compute_update_W(**locals())
 
-                numer = Rt - reg_w_l1
-                denom = nt + reg_w_l2
+                    numer = Rt - reg_w_l1
+                    denom = nt + reg_w_l2
 
-                if debug >= 3:
-                    print('\t\t\tdenom W (||T_t||+rw2) == {0:.2e}+{'
-                          '1:.2e} = {2:.2e}'.format(nt, reg_w_l2,
-                                                    nt + reg_w_l2))
-                W[:, t] = qf_min(-numer, denom, s=None)
+                    W[:, t] = qf_min(-numer, denom, s=None)
 
                 _check_reset_W(**locals())
 
@@ -399,36 +405,17 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     grad_norm_this_iter += _projected_gradient(grad, W[:, t])
             # END for t in range(k)
         if project_W_each_iter and not fix_W and not w_row_sum is None:
-            if debug >= 1:
-                print('\nAfter iter {iter_no} projecting each W row'.format(
+            logger.info('\nAfter iter {iter_no} projecting each W row'.format(
                         iter_no=iter_no))
-            if debug >= 5 and W.size <= 50:
-                print('Before projection:\n', W)
             W = proj_mat_to_simplex(W, w_row_sum)
 
-            if reg_w_l2 >= 0:
-                if debug >= 2:
-                    # print('\t\t\tlin={}'.format(-numer))
-                    print('\t\t\tdenom > 0 using proj_to_simplex to proj W')
 
-            else:
-                if debug >= 2:
-                    # print('\t\t\tlin={}'.format(-numer))
-                    print('\t\t\tdenom <= 0 using qf_min to proj W')
-                if debug >= 3:
-                    obj_before = OBJ.true_objective(X, W, T)
-
-                if debug >= 3:
-                    obj_after = OBJ.true_objective(X, W, T)
-                    print('\t\t\t\tChange in obj = {0:.2e}'.format(
-                            obj_after - obj_before))
-            if debug >= 5 and W.size <= 50:
-                print('After projection:\n', W)
-
+        logger.info('\n{s: ^80}\n'.format(s='Summary at end of '
+                                            'iteration %d'%iter_no))
         if compute_obj_each_iter:
-            obj_history.append(OBJ.true_objective(X, W, T))
-            if debug >= 1:
-                print('Obj: {0:3.3e}'.format(obj_history[-1]))
+            obj_history.append(OBJ.true_objective())
+            logger.info('Obj: {0:3.3e}'.format(obj_history[-1]))
+
         iter_cputime.append(time.clock())
 
         proj_gradient_norm.append(np.sqrt(grad_norm_this_iter))
@@ -444,49 +431,42 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
 
         if debug >= 1:
             t_now = time.time()
-            print('Iter done; ||grad_i||/||grad_1||=%.3e; Took %.3fsec' % (
+            logger.info('Iter done; ||grad_i||/||grad_1||=%.3e; Took %.3fsec' % (
                 np.sqrt(grad_norm_this_iter) / proj_gradient_norm[0],
                 t_now - it_start_time))
-            if debug >= 5 and W.size <= 50 and T.size <= 50:
-                print('W:\n', W)
-                print('T:\n', T)
+
 
         if time.time() - t_global_start >= max_time:
-            if debug >= 1:
-                print('\n\nSTOPPING because max_time after iter %d' % iter_no)
+            logger.info('STOPPING because max_time after iter %d' % iter_no)
             break
 
         if first_last_stopping_condition(proj_gradient_norm,
                                          eps_stop=eps_stop) and not (
                     W_mat is not None):
             # dont use proj grad stop cond if recsys
-            if debug >= 1:
-                print(
-                        '\n\nSTOPPING because proj grad norm after iter %d' %
+            logger.info('STOPPING because proj grad norm after iter %d' %
                         iter_no)
             break
 
         if compute_obj_each_iter and universal_stopping_condition(obj_history,
                                                                   eps_stop=eps_stop):
             if debug >= 1:
-                print(
-                        '\n\nSTOPPING because obj_history after iter %d' %
+                logger.info('STOPPING because obj_history after iter %d' %
                         iter_no)
             break
+        #logger.info('{:=^80}'.format(''))
 
     iter_cputime = [x - start_time for x in iter_cputime]
 
     # project after completing iterations
     if not project_W_each_iter and not w_row_sum is None and not fix_W:
         if np.isscalar(w_row_sum):
-            if debug >= 1:
-                print('Post completion W row projection to {}'.format(
+            logger.info('Post completion W row projection to {}'.format(
                         w_row_sum))
             for i in range(n):
                 W[i, :] = euclidean_proj_simplex(W[i, :], s=w_row_sum)
         else:  # w_row_sum is a vector with a individual sum for each row
-            if debug >= 1:
-                print('Post completion W row-wise projection')
+            logger.info('Post completion W row-wise projection')
             for i in range(n):
                 W[i, :] = euclidean_proj_simplex(W[i, :], s=w_row_sum[i])
 
@@ -521,6 +501,48 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
 
     return rtv
 
+def log_delta_obj(f):
+    """Measure the change in objective in a decorated function"""
+    def wrapper(*args, **kwargs):
+        global OBJ
+        if logger.level <= logging.DEBUG:
+            obj_before = OBJ.true_objective()
+        rtv = f(*args, **kwargs)
+        if logger.level <= logging.DEBUG:
+            obj_after = OBJ.true_objective()
+            logger.debug('\t\t\t{0}() delta = {1:.2e}'.format(
+                f.func_name, obj_after-obj_before))
+        return rtv
+    return wrapper
+
+
+class MeasureDelta(object):
+    """Measure the change in objective around a block of code
+
+    Parameters
+    ----------
+    name : string, optional
+    A useful name for this block of code, None by default.
+
+    Examples
+    --------
+    >>> with MeasureDelta('min'):
+    >>>     W[0,:]=0
+    >>>     W[0,0]=1
+    """
+    def __init__(self, name=None):
+        self.name = name
+    def __enter__(self):
+        global OBJ
+        if logger.level <= logging.DEBUG:
+            self.obj = OBJ.true_objective()
+    def __exit__(self, type, value, traceback):
+        global OBJ
+        if logger.level <= logging.DEBUG:
+            obj_after = OBJ.true_objective()
+            name_s = '{}: '.format(self.name) if self.name else ''
+            logger.debug('\t\t\t{0}delta = {1:.2e}'.format(
+                name_s, obj_after - self.obj))
 
 def _projected_gradient(grad, vec, lb=0, ub=1):
     """
@@ -543,7 +565,8 @@ def _projected_gradient(grad, vec, lb=0, ub=1):
     return rtv
 
 
-def _compute_update_T(W, T, t, X, store_gradients, ind_rows_to_store,
+
+def _compute_update_T(X,W,T,t, store_gradients, ind_rows_to_store,
                       rshp=None, W_mat=None, **kwargs):
     """
     Compute update to one row of T
@@ -553,9 +576,7 @@ def _compute_update_T(W, T, t, X, store_gradients, ind_rows_to_store,
     gradients
 
     """
-    global debug
-    if debug >= 2:
-        print('\t\tT{}'.format(t))
+    logger.debug('\t\tT:'.format(t))
     wR_store = None
     nw_store = None
 
@@ -595,7 +616,7 @@ def _compute_update_T(W, T, t, X, store_gradients, ind_rows_to_store,
     return wR, nw, wR_store, nw_store
 
 
-def _compute_update_W(W_mat, t, T, X, W, rshp=None, **kwargs):
+def _compute_update_W(X,W,T,W_mat, t, rshp=None, **kwargs):
     """
     Compute update to one column of W.
 
@@ -604,9 +625,7 @@ def _compute_update_W(W_mat, t, T, X, W, rshp=None, **kwargs):
     gradients
 
     """
-    global debug
-    if debug >= 2:
-        print('\t\tW{t}'.format(t=t))
+    logger.debug('\t\tW:'.format(t=t))
     if W_mat is None:
         Xt = X.dot(T[t, :].T)
         Tt = T.dot(T[t, :].T)
@@ -621,19 +640,18 @@ def _compute_update_W(W_mat, t, T, X, W, rshp=None, **kwargs):
     return Rt, nt
 
 
-def _project_and_check_reset_t(T, W, X, t, d, project_T_each_iter, t_row_sum,
+@log_delta_obj
+def _project_and_check_reset_t(X,W,T, t, d, project_T_each_iter, t_row_sum,
                                reset_topic_method, fix_reset_seed, **kwargs):
     """
     Project a row of t to simplex and check reset it if it's 0.
     """
     nt1 = np.sum(T[t, :])
-
     if nt1 > 1e-10 or reset_topic_method==None:
         if project_T_each_iter and np.abs(np.sum(T[t,:])-t_row_sum)>1e-15:
             T[t, :] = euclidean_proj_simplex(T[t, :], s=t_row_sum)
     else:  # pick the largest positive residual
-        if debug >= 2:
-            print('\t\t\tReseting T{t} method={m} fixed_seed={'
+        logger.debug('\t\tReseting T{t} method={m} fixed_seed={'
                   's}'.format(t=t, m=reset_topic_method, s=fix_reset_seed))
         if reset_topic_method == 'max_resid_document':
             Rt = scipy.maximum(X - W.dot(T), 0)
@@ -646,23 +664,18 @@ def _project_and_check_reset_t(T, W, X, t, d, project_T_each_iter, t_row_sum,
             T[t, :] = np.random.rand(1, d)
             T[t, :] /= T[t, :].sum()
 
-        if debug >= 5 and T[t, :].size <= 50:
-            print('\t\t\t\tReset to {}'.format(T[t, :]))
 
-
-def _check_reset_W(W, T, n, d, t, iter_no, reset_topic_method, fix_reset_seed,
-                   **kwargs):
+@log_delta_obj
+def _check_reset_W(X,W,T, n, d, t, iter_no, reset_topic_method,
+                   fix_reset_seed, **kwargs):
     """
     Reset column of w if it becomes 0.
     """
-    global debug
-
     nw1 = np.sum(W[:, t])
     if nw1 > 1e-10 or reset_topic_method==None:
         pass
     else:  # pick the largest positive residual
-        if debug >= 2:
-            print('\t\t\tReseting W{t} method={m} fixed_seed={'
+        logger.debug('\t\tReseting W{t} method={m} fixed_seed={'
                   's}'.format(t=t, m=reset_topic_method, s=fix_reset_seed))
         if reset_topic_method == 'max_resid_document':
             Rt = scipy.maximum(X - W.dot(T), 0)
@@ -676,8 +689,6 @@ def _check_reset_W(W, T, n, d, t, iter_no, reset_topic_method, fix_reset_seed,
             T[t, :] = np.random.rand(1, d)
             T[t, :] /= T[t, :].sum()
             W[:, t] = np.random.rand(n)
-        if debug >= 5 and W[:, t].size <= 50:
-            print('\t\t\t\tW reset to', W[:, t])
 
 
 def _initialize_and_validate(W_in, T_in, W_mat, X, k, init, random_state,

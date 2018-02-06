@@ -125,7 +125,6 @@ class NMF_RS_Estimator(sklearn.base.BaseEstimator):
         self.W = soln.pop('W')
         self.T = soln.pop('T')
         self.nmf_outputs = soln
-        print soln['obj_history']
 
         return self
 

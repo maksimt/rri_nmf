@@ -58,7 +58,7 @@ def test_convergence_rs_setting(nmf_params, recsys_train):
         'w_row_sum'          : None, 'project_T_each_iter': True,
         'random_state'       : 0, 'W_mat': Wm, 'compute_obj_each_iter': True,
         't_row_sum'          : 1.0,
-        'reset_topic_method': 'random', 'early_stop':True
+        'reset_topic_method': 'random', 'early_stop':False
     }
     nmf_params.update(rs_settings)
 
