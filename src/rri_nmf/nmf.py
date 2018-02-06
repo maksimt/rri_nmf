@@ -228,7 +228,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     :param delta_gauss_t : numeric delta for Gaussian mechanism for
         calculation of T in each iteration
     """
-
+    logger.log(logging.DEBUG-1, 'Locals: {}'.format(locals()))
     rtv = {}
 
     if type(diagnostics) is not list:
@@ -339,10 +339,10 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
             rtv['denom_W'][iter_no] = []
 
         for t in range(k):
-            logger.debug('\n\tTopic %d' % t)
+            logger.debug('\n{: ^80}'.format('-= Topic %d =-' % t))
             if not fix_T:
 
-                with MeasureDelta('update T'):
+                with _MeasureDelta('update T'):
                     wR, nw, wR_store, nw_store = _compute_update_T(**locals())
 
                     if eps_gauss_t and delta_gauss_t:
@@ -380,7 +380,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     grad_norm_this_iter += _projected_gradient(grad, T[t, :])
 
             if not fix_W:
-                with MeasureDelta('update W'):
+                with _MeasureDelta('update W'):
                     Rt, nt = _compute_update_W(**locals())
 
                     numer = Rt - reg_w_l1
@@ -414,7 +414,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                                             'iteration %d'%iter_no))
         if compute_obj_each_iter:
             obj_history.append(OBJ.true_objective())
-            logger.info('Obj: {0:3.3e}'.format(obj_history[-1]))
+            logger.info('\tObj: {0:3.3e}'.format(obj_history[-1]))
 
         iter_cputime.append(time.clock())
 
@@ -425,8 +425,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
             for func in diagnostics:
                 dval = func(X, W, T)
                 rtv['diagnostics'][func.func_name].append(dval)
-                if debug >= 1:
-                    print('Iter {0} {1}={2}'.format(iter_no, func.func_name,
+                logger.info('\t{1}: {2}'.format(iter_no, func.func_name,
                                                     dval))
 
         if debug >= 1:
@@ -501,7 +500,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
 
     return rtv
 
-def log_delta_obj(f):
+def _log_delta_obj(f):
     """Measure the change in objective in a decorated function"""
     def wrapper(*args, **kwargs):
         global OBJ
@@ -510,14 +509,14 @@ def log_delta_obj(f):
         rtv = f(*args, **kwargs)
         if logger.level <= logging.DEBUG:
             obj_after = OBJ.true_objective()
-            logger.debug('\t\t\t{0}() delta = {1:.2e}'.format(
+            logger.debug('\t\t\t{0}() delta = {1:.2f}'.format(
                 f.func_name, obj_after-obj_before))
         return rtv
     return wrapper
 
 
-class MeasureDelta(object):
-    """Measure the change in objective around a block of code
+class _MeasureDelta(object):
+    """Measure the change in NMF objective around a block of code
 
     Parameters
     ----------
@@ -526,7 +525,7 @@ class MeasureDelta(object):
 
     Examples
     --------
-    >>> with MeasureDelta('min'):
+    >>> with _MeasureDelta('min'):
     >>>     W[0,:]=0
     >>>     W[0,0]=1
     """
@@ -541,7 +540,7 @@ class MeasureDelta(object):
         if logger.level <= logging.DEBUG:
             obj_after = OBJ.true_objective()
             name_s = '{}: '.format(self.name) if self.name else ''
-            logger.debug('\t\t\t{0}delta = {1:.2e}'.format(
+            logger.debug('\t\t\t{0}delta = {1:.2f}'.format(
                 name_s, obj_after - self.obj))
 
 def _projected_gradient(grad, vec, lb=0, ub=1):
@@ -640,7 +639,7 @@ def _compute_update_W(X,W,T,W_mat, t, rshp=None, **kwargs):
     return Rt, nt
 
 
-@log_delta_obj
+@_log_delta_obj
 def _project_and_check_reset_t(X,W,T, t, d, project_T_each_iter, t_row_sum,
                                reset_topic_method, fix_reset_seed, **kwargs):
     """
@@ -665,7 +664,7 @@ def _project_and_check_reset_t(X,W,T, t, d, project_T_each_iter, t_row_sum,
             T[t, :] /= T[t, :].sum()
 
 
-@log_delta_obj
+@_log_delta_obj
 def _check_reset_W(X,W,T, n, d, t, iter_no, reset_topic_method,
                    fix_reset_seed, **kwargs):
     """

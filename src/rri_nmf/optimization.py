@@ -46,7 +46,9 @@ def qf_min(w, c, s=1.0):
         x = np.zeros_like(w)
         x[I] = np.maximum(-w[I], 0) / (c[I] + eps_div_by_zero)
         if s is not None:
-            x = euclidean_proj_simplex(x, s)
+            x = x / x.sum()  # dont project to the simplex here, since that's
+            #  wrong with a multi-dimensional c
+        
         # Ho Thesis Alg10 Line18 (pg 119) says to leave everything else 0
         # TODO: this is incorrect in the presence of regularization parameters
 
