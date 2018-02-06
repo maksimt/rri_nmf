@@ -361,7 +361,20 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     numer = (wR - reg_t_l1)
                     denom = nw + reg_t_l2
 
-                    T[t, :] = qf_min(-numer, denom, s=t_row_sum)
+                    # with _MeasureDelta('Thesis Ho'):
+                    # T[t, :] = np.maximum(numer, 0) / (denom + eps_div_by_zero)
+                    # I = np.argwhere(denom==0).ravel()
+                    # T[t, I] = 0
+                    # nt1 = np.sum(T[t,:])
+                    # T[t, :] = T[t, :]/nt1
+                    # W[:,t] = W[:,t]*nt1
+
+                    # T[t, :] = Tprev
+                    # with _MeasureDelta('qf_min'):
+                    #
+                    #nt1 = np.sum(T[t, :])
+                    T[t, :], nt1 = qf_min(-numer, denom, s=t_row_sum)
+                    W[:, t] = W[:, t]*nt1
 
                 if store_gradients:
                     rtv['numer_W'][iter_no].append(wR_store)
@@ -386,7 +399,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     numer = Rt - reg_w_l1
                     denom = nt + reg_w_l2
 
-                    W[:, t] = qf_min(-numer, denom, s=None)
+                    W[:, t], nw1 = qf_min(-numer, denom, s=None)
 
                 _check_reset_W(**locals())
 

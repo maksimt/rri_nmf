@@ -22,10 +22,13 @@ def qf_min(w, c, s=1.0):
     -------
     x : array_like
         The vector x, of same shape as w, that minimizes :math:`f(x)`.
+    nx : float
+        The 1-norm of vector x before it was scaled.
     """
     if np.isscalar(c):
         if c > 0:
             x = np.maximum(-w, 0) / (c + eps_div_by_zero)
+            nx = x.sum()
             # it's correct to project to simplex here since c>0 makes
             # this p.d. and hence convex
             if s is not None:
@@ -41,18 +44,20 @@ def qf_min(w, c, s=1.0):
             else:
                 raise NotImplementedError('s={} is not yet '
                                           'implemented'.format(s))
+            nx = 1.0
     elif np.shape(w) == np.shape(c):
-        I = np.argwhere(c>0)
+        I = np.argwhere(c>0).ravel()
         x = np.zeros_like(w)
         x[I] = np.maximum(-w[I], 0) / (c[I] + eps_div_by_zero)
+        nx = x.sum()
         if s is not None:
             x = x / x.sum()  # dont project to the simplex here, since that's
             #  wrong with a multi-dimensional c
-        
+
         # Ho Thesis Alg10 Line18 (pg 119) says to leave everything else 0
         # TODO: this is incorrect in the presence of regularization parameters
 
-    return x
+    return x, nx
 
 def universal_stopping_condition(obj_history, eps_stop=1e-4):
     """ Check if last change in objective is <= eps_stop * first change"""
