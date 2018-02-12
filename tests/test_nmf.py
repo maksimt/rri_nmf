@@ -92,19 +92,19 @@ def test_convergence_TM_Estimator(text_train):
     n, d = X.shape
     M = NMF_TM_Estimator(n, d, 5, random_state=0, max_iter=10)
     M = M.fit(X)
-    print M.nmf_outputs['obj_history']
+    #print M.nmf_outputs['obj_history']
     assert np.linalg.norm(X-np.dot(M.W, M.T), 'fro') < np.linalg.norm(X,'fro')
     M2 = NMF_TM_Estimator(n,d,5, random_state=0, max_iter=2,
                           do_final_project_W=False)
     M2 = M2.fit(X)
-    print M2.nmf_outputs['obj_history']
+    ## print M2.nmf_outputs['obj_history']
     M2.max_iter = 10
     for _ in range(7):
         M2 = M2.one_iter(X)
-        print M2.nmf_outputs['obj_history']
+        #print M2.nmf_outputs['obj_history']
     M2 = M2.one_iter(X)
     M2.W = proj_mat_to_simplex(M2.W)
-    print M2.nmf_outputs['obj_history']
+    #print M2.nmf_outputs['obj_history']
 
     assert np.allclose(M2.T, M.T)
     assert np.allclose(M2.W, M.W)
