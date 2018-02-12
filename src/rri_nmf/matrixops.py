@@ -65,7 +65,7 @@ def euclidean_proj_simplex(v_in, s=1):
     w = (v - theta).clip(min=0)
 
     return sp.sparse.csr_matrix(w.reshape(v_in.shape)) if sp.sparse.issparse(
-            v_in) \
+        v_in) \
         else w.reshape(v_in.shape)
 
 
@@ -112,7 +112,7 @@ def normalize_l2(X, dim=1):
     """
 
     if dim == 1:
-        xs = (1 / np.sqrt(np.sum(X**2, dim) + 1e-10))
+        xs = (1 / np.sqrt(np.sum(X ** 2, dim) + 1e-10))
         return X * xs.reshape(xs.size, 1)
     elif dim == 0:
         # raise NotImplementedError("dim 0 not yet implemented")
@@ -196,14 +196,8 @@ def labels_to_mat(y):
             return normalize(y)  # Y is already correct shape, just normalize
         else:
             raise Exception(
-                    'labels_to_mat: number of columns of y = {0} ' + 'doesnt '
-                                                                     'match '
-                                                                     'number '
-                                                                     'of '
-                                                                     'unique '
-                                                                     'elements = {'
-                                                                     '1}'.format(
-                            y.shape[1], k))
+                'labels_to_mat: number of columns of y = {0} doesnt'
+                'match number of unique elements {1}'.format(y.shape[1], k))
 
 
 def harden_distributions(W):
@@ -213,6 +207,11 @@ def harden_distributions(W):
     I = np.argmax(W, 1)
     Wh[range(W.shape[0]), I] = 1
     return Wh
+
+
+def col_vector(x):
+    """Make x (n,1) instead of (n,)"""
+    return x.reshape(x.size, 1)
 
 
 def stack_matrices(L, dict_key=None, transform=None, dim='tall'):

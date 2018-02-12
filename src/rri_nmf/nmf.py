@@ -21,7 +21,8 @@ from scipy.stats import norm as gaussian
 # local packages
 # ==============
 from matrixops import (
-    euclidean_proj_simplex, normalize, stack_matrices, proj_mat_to_simplex
+    euclidean_proj_simplex, normalize, stack_matrices, proj_mat_to_simplex,
+    col_vector
 )
 from optimization import (
     first_last_stopping_condition, universal_stopping_condition, qf_min
@@ -33,7 +34,15 @@ from initialization import initialize_nmf
 # logging
 # =======
 import logging
-
+# logger levels:
+# WARNING - only warn about unbounded objectives
+# INFO - show iterations and summary of objective and diagnostics for each
+#   iteration
+# DEBUG - show changes in objective as a result of each update, enables
+#   compute_obj_each_iter
+# DEBUG-1
+# DEBUG-2 - show detailed breakdowns of objectives
+# DEBUG-3 - show 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------
@@ -42,6 +51,8 @@ logger = logging.getLogger(__name__)
 debug = 0
 eps_div_by_zero = np.spacing(10)  # added to denominators to avoid /0
 OBJ = None  # will be instantiated from inside nmf()
+n_resets_remaining = 0      # we can only reset topics/weights a finite number
+                            # of times to ensure convergence.
 
 
 class TrueObjComputer(object):
@@ -74,7 +85,7 @@ class TrueObjComputer(object):
         tr2 = 0.5 * self.reg_t_l2 * T2
         tr1 = self.reg_t_l1 * T1
         wr1 = self.reg_w_l1 * W1
-        logger.log(logging.DEBUG - 2, '\n\t\tbase:{:.2f} + wr2:{:.2f} + tr2:{'
+        logger.log(logging.DEBUG - 3, '\n\t\tbase:{:.2f} + wr2:{:.2f} + tr2:{'
                                       ':.2f} + wr1:{:.2f} + tr1:{:.2f}'.format(
             base_obj, wr2, tr2, wr1, tr1))
         obj = base_obj + wr2 + tr2 + tr1 + wr1
@@ -87,9 +98,12 @@ class TrueObjComputer(object):
 def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         random_state=None, init='nndsvd', T_in=[], W_in=[], max_iter=200,
         max_time=600, eps_stop=1e-4, compute_obj_each_iter=False,
-        project_W_each_iter=False, w_row_sum=None, project_T_each_iter=False,
-        t_row_sum=None, early_stop=None, reset_topic_method='random',
-        fix_reset_seed=False, reg_w_l2=0, reg_t_l2=0, reg_w_l1=0, reg_t_l1=0,
+        project_W_each_iter=False, w_row_sum=None,
+        do_final_project_W = True, project_T_each_iter=False,
+        t_row_sum=None, early_stop=None,
+        reset_topic_method='max_resid_document', fix_reset_seed=False,
+        n_resets=23,
+        reg_w_l2=0, reg_t_l2=0, reg_w_l1=0, reg_t_l1=0,
         diagnostics=[], store_gradients=False,
         ind_rows_to_store=None, eps_gauss_t=None, delta_gauss_t=None):
     """
@@ -133,12 +147,25 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         It is also useful as a more general stopping condition than the
         projected gradient norm-based stopping condition.
     project_W_each_iter
+    do_final_project_W : bool, optional
+        True by default, project rows of W to simplex at the end of all
+        iterations if w_row_sum is not None and project_W_each_iter is True
     w_row_sum
     project_T_each_iter
     t_row_sum
     early_stop
-    reset_topic_method
+    reset_topic_method : str or None, optional
+        How should cols of W / rows of T be reset if they have zero norm.
+        Options are:
+        'random' to generate uniformly-random entries seeded by
+        the topic number + the number of resets remaining.
+        None to not reset.
+        'max_resid_document', the default to reset the topic to the document
+        with largest residual.
     fix_reset_seed
+    n_resets : int, optional
+        How many times are we allowed to reset cols of W / rows of T if they
+        get to 0 norm. Should be finite for convergence. 23 by defualt.
     reg_w_l2
     reg_t_l2
     reg_w_l1
@@ -162,7 +189,8 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         k * d topic-feature matrix
 
     """
-    global eps_div_by_zero, OBJ
+    global eps_div_by_zero, OBJ, n_resets_remaining
+    n_resets_remaining = n_resets
 
     """ Factorize non-negative [n*d] X as  non-negative [n*k] W x [k*d] T
 
@@ -243,11 +271,23 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     rtv = {}
     n, d = X.shape
 
-    if project_T_each_iter and abs(reg_w_l2) + abs(reg_w_l1) > 0:
-        logger.warn('project_T_each_iter=True will not converge if '
-                    '|reg_w_l2|>0 or |reg_w_l1|>0. Setting '
-                    'project_T_each_iter=False and proceeding.')
-        project_T_each_iter = False
+    # if project_T_each_iter and W_mat is not None and \
+    #                         abs(reg_w_l2) + abs(reg_w_l1) > 0:
+    #     logger.warn('project_T_each_iter=True will not converge if '
+    #                 '|reg_w_l2|>0 or |reg_w_l1|>0. Setting '
+    #                 'project_T_each_iter=False and proceeding.')
+    #     project_T_each_iter = False
+    if project_T_each_iter and np.any([reg_w_l1, reg_t_l1]):
+        logger.warning('This implementation can not solve '
+                       'project_T_each_iter=True with regularization. Because'
+                       'WT is no longer scale invariant. Setting '
+                       'project_T_each_iter to False.')
+        project_T_each_iter=False
+    if project_W_each_iter and reg_w_l2 < 0:
+        logger.warning('project_W_each_iter={} and reg_w_l2={}<0 doesnt '
+                    'converge with the current implementation. It also '
+                       'leads to nonsense solutions with proj=False.'.format(
+                             project_W_each_iter, reg_w_l2))
 
     if (not project_T_each_iter and not t_row_sum) and (reg_t_l1 < 0 or
                                                                reg_t_l2 < 0):
@@ -311,15 +351,9 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     W, T = _initialize_and_validate(**locals())
 
     iter_cputime = []  # time per iteration
-    proj_gradient_norm = []  # the norm of projected gradients is used as a
-    # stopping condition. Thesis Ho section 3.5
 
     if W_mat is not None:
         logger.info('W_mat is k times slower than w_row or no weighting.')
-
-        def rshp(x):
-            """ make it (n,1) instead of (n,)"""
-            return x.reshape(x.size, 1)
 
     numexpr.set_num_threads(numexpr.detect_number_of_cores())
 
@@ -372,10 +406,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
             W_prev = copy.deepcopy(W)
             T_prev = copy.deepcopy(T)
 
-        if debug >= 1:
-            it_start_time = time.time()
-
-        grad_norm_this_iter = 0
+        it_start_time = time.time()
 
         if store_gradients:
             rtv['numer_W'][iter_no] = []
@@ -389,21 +420,24 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     wR, nw, wR_store, nw_store = _compute_update_T(**locals())
 
                     if eps_gauss_t and delta_gauss_t:
-                        # both parameters are not None received.
+                        # both parameters are not None
                         # The intent is to use the Gaussian differentially
                         # private mechanism pg 261 of Dwork Roth Differential
                         # Privacy
-                        c2 = 2 * np.log(1.25 / delta_gauss_t)
-                        df2 = 1.0  # an upper bound on the l2 sensitivity here
-                        sigma2 = c2 * df2 ** 2 * (1 / eps_gauss_t) ** 2
-                        N = gaussian(0, np.sqrt(
-                            sigma2))  # scipy's norm takes mean,
-                        #  std
+                        c2 = 2 * np.log(1.25 / float(delta_gauss_t)) + 0.001
+                        df2 = 1000.0  # an upper bound on the l2 sensitivity
+                        # here
+                        sigma2 = c2 * df2 ** 2 * (1 / float(eps_gauss_t)) ** 2
+                        # scipy's norm takes mean, std
+                        N = gaussian(0, np.sqrt(sigma2))
                         wR += N.rvs(wR.size).reshape(wR.shape)
                         nw += N.rvs(nw.size).reshape(nw.shape)
+                        nw = np.maximum(nw, 0)
 
                     numer = (wR - reg_t_l1)
                     denom = nw + reg_t_l2
+
+
 
                     if project_T_each_iter:
                         s = t_row_sum
@@ -413,7 +447,8 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     T[t, :], nt1 = qf_min(-numer, denom, s=s, ub=t_row_sum)
 
                     # otherwise we dont have a diagonal scaling invariance
-                    if abs(reg_w_l1) + abs(reg_w_l2) == 0:
+                    if abs(reg_w_l1) + abs(reg_w_l2) + abs(reg_t_l1) + abs(
+                            reg_t_l2) == 0:
                         W[:, t] = W[:, t] * nt1
 
                 if store_gradients:
@@ -421,16 +456,6 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                     rtv['denom_W'][iter_no].append(nw_store)
 
                 _project_and_check_reset_t(**locals())
-
-                # Ho says to compute gradient after normalization (Section 3.5)
-                grad = T[t, :] * denom - numer  # x*d - n = df/dx
-                grad = grad ** 2  # for purposes of computing Frob norm
-                if iter_no == 0:  # dont use proj grad on first iter (Lin 2007)
-                    grad_norm_this_iter += _projected_gradient(grad, T[t, :],
-                                                               lb=-np.inf,
-                                                               ub=np.inf)
-                else:
-                    grad_norm_this_iter += _projected_gradient(grad, T[t, :])
 
             if not fix_W:
                 with _MeasureDelta('update W'):
@@ -450,15 +475,9 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                 assert np.all(W[:, t] >= 0), 'W contains negative entries'
                 assert np.sum(W[:, t]) > 0, 'W[:, t] sums to 0'
 
-                grad = W[:, t] * denom - numer
-                grad = grad ** 2  # for purposes of computing Frob norm
-                if iter_no == 0:  # dont use proj grad on first iter (Lin 2007)
-                    grad_norm_this_iter += _projected_gradient(grad, W[:, t],
-                                                               lb=-np.inf,
-                                                               ub=np.inf)
-                else:
-                    grad_norm_this_iter += _projected_gradient(grad, W[:, t])
-                    # END for t in range(k)
+        # END for t in range(k)
+
+
         if project_W_each_iter and not fix_W and not w_row_sum is None:
             logger.info('\nAfter iter {iter_no} projecting each W row'.format(
                 iter_no=iter_no))
@@ -472,8 +491,6 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
 
         iter_cputime.append(time.clock())
 
-        proj_gradient_norm.append(np.sqrt(grad_norm_this_iter))
-
         # run diagnostics after timing
         if len(diagnostics) > 0:
             for func in diagnostics:
@@ -482,37 +499,25 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
                 logger.info('\t{1}: {2}'.format(iter_no, func.func_name,
                                                 dval))
 
-        if debug >= 1:
-            t_now = time.time()
-            logger.info(
-                'Iter done; ||grad_i||/||grad_1||=%.3e; Took %.3fsec' % (
-                    np.sqrt(grad_norm_this_iter) / proj_gradient_norm[0],
-                    t_now - it_start_time))
+
+        t_now = time.time()
+        logger.info('\tTime: %.3fsec' % (t_now - it_start_time))
 
         if time.time() - t_global_start >= max_time:
             logger.info('STOPPING because max_time after iter %d' % iter_no)
             break
 
-        if first_last_stopping_condition(proj_gradient_norm,
-                                         eps_stop=eps_stop) and not (
-                    W_mat is not None):
-            # dont use proj grad stop cond if recsys
-            logger.info('STOPPING because proj grad norm after iter %d' %
-                        iter_no)
-            break
-
         if compute_obj_each_iter and universal_stopping_condition(obj_history,
                                                                   eps_stop=eps_stop):
-            if debug >= 1:
-                logger.info('STOPPING because obj_history after iter %d' %
+            logger.info('STOPPING because obj_history after iter %d' %
                             iter_no)
             break
-            # logger.info('{:=^80}'.format(''))
 
     iter_cputime = [x - start_time for x in iter_cputime]
 
     # project after completing iterations
-    if not project_W_each_iter and not w_row_sum is None and not fix_W:
+    if not project_W_each_iter and not w_row_sum is None and not fix_W and \
+            do_final_project_W:
         if np.isscalar(w_row_sum):
             logger.info('Post completion W row projection to {}'.format(
                 w_row_sum))
@@ -548,7 +553,7 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
     if compute_obj_each_iter:
         rtv['obj_history'] = obj_history
         rtv['obj_calculator'] = OBJ
-    rtv['proj_gradient_norm'] = proj_gradient_norm
+    #rtv['proj_gradient_norm'] = proj_gradient_norm
     rtv['iter_cputime'] = iter_cputime
     rtv['random_state'] = random_state
 
@@ -626,9 +631,32 @@ def _projected_gradient(grad, vec, lb=0, ub=1):
 
 
 def _compute_update_T(X, W, T, t, store_gradients, ind_rows_to_store,
-                      rshp=None, W_mat=None, **kwargs):
+                      W_mat=None, **kwargs):
     """
-    Compute update to one row of T
+    Compute update to one row of T.
+
+    Verified against Ho's thesis on Feb 11 2018.
+
+    Compared to Ho's thesis (Alg 7, pg 69) we have a change of notation
+     Ho            Ours
+     -----         -----
+     u_t           W[:, t]
+     v_t           T[t, :].T
+     v_t.T         T[t, :]
+
+    Parameters
+    ----------
+    X : arraylike
+    W : arraylike
+    T : arraylike
+    store_gradients : bool, optional
+        Should the objects that PD-NMF would send to the network be stored so
+        that we can analyze the privacy loss within them, e.g. using KSDP
+        Default is False.
+    ind_rows_to_store : arraylike or None, optional
+        If `store_gradients` is True, which documents should be included for
+        the calculation of gradients that will be sent to the network. None
+        means all documents should be included.
 
     Returns
     -------
@@ -643,7 +671,7 @@ def _compute_update_T(X, W, T, t, store_gradients, ind_rows_to_store,
         w = W[:, t]
         wX = w.T.dot(X)
         wW = w.T.dot(W)
-        wW[t] = 0
+        wW[t] = 0  # ignore contribution from t-th row of T
         wR = wX - wW.dot(T)
         nw = (W[:, t] ** 2).sum()  # ||W[:, t]||^2, this is a scalar
         if store_gradients and not (ind_rows_to_store is not None):
@@ -657,25 +685,37 @@ def _compute_update_T(X, W, T, t, store_gradients, ind_rows_to_store,
             wR_store = wXs - wWs.dot(T)
             nw_store = (ws ** 2).sum()
     else:
-        Rt = X - np.dot(W, T) + np.dot(rshp(W[:, t]), rshp(T[t, :]).T)
-        Rt = ne_eval('Rt * W_mat')
+        # The four lines are equivalent to (but faster than):
+        # Rt = X - np.dot(W, T) + np.dot(col_vector(W[:, t]), col_vector(T[t, :]).T)
+        w = W[:, t].copy()
+        W[:, t] = 0
+        Rt = X - np.dot(W, T)
+        W[:, t] = w
+
+        if W_mat.size > 2.5e5:
+            Rt = ne_eval('W_mat * Rt')
+        else:
+            Rt = W_mat * Rt
+
         wR = np.dot(W[:, t].T, Rt).ravel()
-        nw = np.dot(rshp(W[:, t] ** 2).T, W_mat).ravel()
-        # this is a vector
-        #  but python broadcasting implements Lemma 6.5 correct
+        nw = np.dot(col_vector(W[:, t] ** 2).T, W_mat).ravel()
+        # nw is a vector, and we want to divide Rt elementwise by it,
+        # consequently:
+        # python broadcasting implements Lemma 6.5 (pg 117) correctly
+        # we ravel() both wR and nw so their quotient has shape (d,)
         if store_gradients and ind_rows_to_store is None:
             wR_store = wR
             nw_store = nw
         elif store_gradients and ind_rows_to_store is not None:
             wR_store = np.dot(W[ind_rows_to_store, :][:, t].T,
                               Rt[ind_rows_to_store, :])
-            nw_store = np.dot(rshp(W[ind_rows_to_store, :][:, t] ** 2).T,
+            nw_store = np.dot(col_vector(W[ind_rows_to_store, :][:, t] ** 2).T,
                               W_mat[ind_rows_to_store, :]).ravel()
 
     return wR, nw, wR_store, nw_store
 
 
-def _compute_update_W(X, W, T, W_mat, t, rshp=None, **kwargs):
+def _compute_update_W(X, W, T, W_mat, t,  **kwargs):
     """
     Compute update to one column of W.
 
@@ -688,14 +728,22 @@ def _compute_update_W(X, W, T, W_mat, t, rshp=None, **kwargs):
     if W_mat is None:
         Xt = X.dot(T[t, :].T)
         Tt = T.dot(T[t, :].T)
+        # zero out the t-th column of W's contribution
         Tt[t] = 0
         Rt = Xt - W.dot(Tt)
         nt = (T[t, :] ** 2).sum()  # ||T[t, :]||^2, a scalar
     else:
-        Rt = X - np.dot(W, T) + np.dot(rshp(W[:, t]), rshp(T[t, :]).T)
-        Rt = ne_eval('W_mat * Rt')
+        w = W[:, t].copy()
+        W[:, t] = 0
+        Rt = X - np.dot(W, T)
+        W[:, t] = w
+        if W_mat.size > 2.5e5:
+            Rt = ne_eval('W_mat * Rt')
+        else:
+            Rt = W_mat * Rt
+
         Rt = np.dot(Rt, T[t, :].T).ravel()
-        nt = np.dot(W_mat, rshp(T[t, :] ** 2)).ravel()
+        nt = np.dot(W_mat, col_vector(T[t, :] ** 2)).ravel()
     return Rt, nt
 
 
@@ -705,37 +753,52 @@ def _project_and_check_reset_t(X, W, T, t, d, project_T_each_iter, t_row_sum,
     """
     Project a row of t to simplex and check reset it if it's 0.
     """
+    global n_resets_remaining
     nt1 = np.sum(T[t, :])
-    if nt1 > 1e-10 or reset_topic_method == None:
-        if t_row_sum and project_T_each_iter and np.abs(np.sum(T[t, \
-                :]) - t_row_sum) > \
-                1e-15:
+    if nt1 > 1e-10 or reset_topic_method is None:
+        if t_row_sum and project_T_each_iter and \
+            np.abs(np.sum(T[t, ]) - t_row_sum) > 1e-15:
             T[t, :] = euclidean_proj_simplex(T[t, :], s=t_row_sum)
     else:  # pick the largest positive residual
         logger.debug('\t\tReseting T{t} method={m} fixed_seed={'
                      's}'.format(t=t, m=reset_topic_method, s=fix_reset_seed))
+        if n_resets_remaining==0:
+            logger.info('\tNot reseting W even though nw<=1e-10 because '
+                        'n_resets_remaining==0')
+            return
+        n_resets_remaining-=1
         if reset_topic_method == 'max_resid_document':
             Rt = scipy.maximum(X - W.dot(T), 0)
             Rts = (Rt ** 2).sum(1)
             mi = scipy.argmax(Rts)
             T[t, :] = Rt[mi, :]
+            W[:, t] = 0
+            W[mi, t] = 1.0
+
         elif reset_topic_method == 'random':
             if fix_reset_seed:
-                np.random.seed(t)
+                np.random.seed(t+np.argmax(T[t, :]))
             T[t, :] = np.random.rand(1, d)
             T[t, :] /= T[t, :].sum()
+            W[:, t] = np.random.rand(n)
 
 
 @_log_delta_obj
-def _check_reset_W(X, W, T, n, d, t, iter_no, reset_topic_method,
+def _check_reset_W(X, W, T, n, d, t, reset_topic_method,
                    fix_reset_seed, **kwargs):
     """
     Reset column of w if it becomes 0.
     """
+    global n_resets_remaining
     nw1 = np.sum(W[:, t])
     if nw1 > 1e-10 or reset_topic_method == None:
         pass
     else:  # pick the largest positive residual
+        if n_resets_remaining==0:
+            logger.info('\tNot reseting W even though nw<=1e-10 because '
+                        'n_resets_remaining==0')
+            return
+        n_resets_remaining-=1
         logger.debug('\t\tReseting W{t} method={m} fixed_seed={'
                      's}'.format(t=t, m=reset_topic_method, s=fix_reset_seed))
         if reset_topic_method == 'max_resid_document':
@@ -743,10 +806,11 @@ def _check_reset_W(X, W, T, n, d, t, iter_no, reset_topic_method,
             Rts = (Rt ** 2).sum(1)
             mi = scipy.argmax(Rts)
             T[t, :] = Rt[mi, :]
+            W[:, t] = 0
             W[mi, t] = 1.0
         elif reset_topic_method == 'random':
             if fix_reset_seed:
-                np.random.seed(t)
+                np.random.seed(t+np.argmax(T[t, :]))
             T[t, :] = np.random.rand(1, d)
             T[t, :] /= T[t, :].sum()
             W[:, t] = np.random.rand(n)
@@ -814,3 +878,35 @@ def _initialize_and_validate(W_in, T_in, W_mat, X, k, init, random_state,
         T = proj_mat_to_simplex(T, t_row_sum)
 
     return W, T
+
+def _projected_gradient_norm(grad, vec, lb=0, ub=np.inf, zero=eps_div_by_zero):
+    """
+    Compute the projected gradient defined as (where X=vec):
+    [\grad_X^P]_ij = [\grad_X]_ij if X_ij>0 else min(0, [\grad_X]_ij)
+    :param grad: vector of shape (d,) containing the gradient of vec
+    :param vec: vector of shape (d,) containing the elements of vec
+    :param [zero]: floating point that represents zero (1e-10 by default)
+    """
+
+    lb = lb + zero  # elements < lb+zero are considered to be < lb
+    ub = ub - zero  # similarly > ub-zero are considered to be > ub
+    assert np.all(lb <= vec) and np.all(vec <= ub), 'vec is assumed to be ' \
+                                                    'non-negative'
+
+    # from CJLin https://www.csie.ntu.edu.tw/~cjlin/papers/pgradnmf.pdf
+    #proj grad f(x)_i = grad f(x)_i if lb<=x<=ub
+    #                   min(0, grad f(x)_i)) if x_i=lb
+    #                   max(0, grad f(x)_i)) if x_i=ub
+
+    I_int = np.logical_and(vec > lb, vec < ub)
+    I_lb = vec <= lb
+    I_ub = vec >= ub
+
+    gpe = np.zeros_like(grad)
+    gpe[I_int] = grad[I_int]
+    gpe[I_lb] = np.minimum(0, grad[I_lb])
+    gpe[I_ub] = np.maximum(0, grad[I_ub])
+
+    norm_fro_2 = np.sum(gpe**2)
+
+    return norm_fro_2

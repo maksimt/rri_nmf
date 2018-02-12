@@ -12,7 +12,7 @@ from matrixops import tfidf, normalize
 
 
 class NMF_RS_Estimator(sklearn.base.BaseEstimator):
-    def __init__(self, n, d, k, wr1=0, wr2=0, tr1=0, tr2=0, random_state=0,
+    def __init__(self, n, d, k, wr1=0, tr1=0, random_state=0,
                  W=np.array([]), T=np.array([]), max_iter=30, nmf_kwargs={},
                  use_validation_early_stopping=True):
 
@@ -22,9 +22,7 @@ class NMF_RS_Estimator(sklearn.base.BaseEstimator):
 
         self.max_iter = max_iter
         self.wr1 = wr1
-        self.wr2 = wr2
         self.tr1 = tr1
-        self.tr2 = tr2
         self.random_state = random_state
 
         self.min_rating = None
@@ -92,10 +90,10 @@ class NMF_RS_Estimator(sklearn.base.BaseEstimator):
                 Xpred = np.clip(Xpred, self.min_rating, self.max_rating)
                 return np.sqrt(np.mean((Xpred[I, J] - Xv[I, J])**2))
 
-            early_stop = RMSE_val
+            self.early_stop = RMSE_val
 
         else:
-            early_stop = True
+            self.early_stop = False
             Xtr = sp.coo_matrix((y, (X[:, 0], X[:, 1])),
                                 shape=(self.n, self.d)).toarray()
 
@@ -116,11 +114,12 @@ class NMF_RS_Estimator(sklearn.base.BaseEstimator):
         # import pdb; pdb.set_trace()
 
         soln = nmf(Xtr, self.k, max_iter=self.max_iter, max_time=7200,
-                   project_W_each_iter=False, project_T_each_iter=True,
+                   compute_obj_each_iter=True, reset_topic_method=None,
+                    early_stop=self.early_stop, project_T_each_iter=False,
+                    t_row_sum=1.0, project_W_each_iter=False, w_row_sum=None,
                    W_mat=W_mat_tr, W_in=W_in, T_in=T_in,
-                   reg_w_l1=self.wr1, reg_w_l2=self.wr2, reg_t_l1=self.tr1,
-                   reg_t_l2=self.tr2, random_state=self.random_state,
-                   compute_obj_each_iter=True, early_stop=False,
+                   reg_w_l1=self.wr1, reg_t_l1=self.tr1,
+                    random_state=self.random_state,
                    **self.nmf_kwargs)
         self.W = soln.pop('W')
         self.T = soln.pop('T')
@@ -149,10 +148,10 @@ class NMF_RS_Estimator(sklearn.base.BaseEstimator):
         W_mat_tr[Itr, Jtr] = 1
 
         soln = nmf(Xnew, self.k, max_iter=4, max_time=7200,
-                   project_W_each_iter=False, project_T_each_iter=True,
+                   project_W_each_iter=False, project_T_each_iter=False,
                    W_mat=W_mat_tr, T_in=self.T, fix_T=True, reg_w_l1=self.wr1,
-                   reg_w_l2=self.wr2, reg_t_l1=self.tr1, reg_t_l2=self.tr2,
-                   early_stop=True,
+                   reg_t_l1=self.tr1, t_row_sum=1.0, w_row_sum=None,
+                   reset_topic_method='random',
                    random_state=self.random_state, **self.nmf_kwargs)
         return soln['W']
 
@@ -187,7 +186,8 @@ class NMF_TM_Estimator(sklearn.base.BaseEstimator,
                        sklearn.base.TransformerMixin):
     def __init__(self, n, d, k, wr1=0, wr2=0, tr1=0, tr2=0, random_state=0,
                  handle_tfidf=False, handle_normalization=False, max_iter=300,
-                 W=np.array([]), T=np.array([]), nmf_kwargs={}):
+                 W=np.array([]), T=np.array([]), nmf_kwargs={},
+                 do_final_project_W=True):
         """
 
         Parameters
@@ -267,10 +267,12 @@ class NMF_TM_Estimator(sklearn.base.BaseEstimator,
             X = normalize(X)
 
         soln = nmf(X, self.k, max_iter=self.max_iter, max_time=7200,
-                   project_W_each_iter=True, w_row_sum=1,
-                   project_T_each_iter=True, W_in=W_in, T_in=T_in,
+                   project_W_each_iter=False, w_row_sum=1.0,
+                   project_T_each_iter=True, t_row_sum=1.0,
+                   do_final_project_W=self.do_final_project_W,
+                   W_in=W_in, T_in=T_in,
                    reg_w_l1=self.wr1, reg_w_l2=self.wr2, reg_t_l1=self.tr1,
-                   reg_t_l2=self.tr2, negative_denom_correction=True,
+                   reg_t_l2=self.tr2,
                    random_state=self.random_state, **self.nmf_kwargs)
 
         self.W = soln.pop('W')
@@ -296,11 +298,14 @@ class NMF_TM_Estimator(sklearn.base.BaseEstimator,
             X = normalize(X)
 
         soln = nmf(X, self.k, max_iter=1, max_time=240,
-                   project_W_each_iter=True, w_row_sum=1,
-                   project_T_each_iter=True, W_in=W_in, T_in=T_in,
+                   project_W_each_iter=False, w_row_sum=1.0,
+                   project_T_each_iter=True, t_row_sum=1.0,
+                   do_final_project_W=self.do_final_project_W,
+                   W_in=W_in,
+                   T_in=T_in,
                    reg_w_l1=self.wr1, reg_w_l2=self.wr2, reg_t_l1=self.tr1,
                    reg_t_l2=self.tr2, random_state=self.random_state,
-                   negative_denom_correction=True, **self.nmf_kwargs)
+                    **self.nmf_kwargs)
 
         self.W = soln.pop('W')
         self.T = soln.pop('T')
@@ -320,10 +325,11 @@ class NMF_TM_Estimator(sklearn.base.BaseEstimator,
             Xnew = normalize(Xnew)
 
         soln = nmf(Xnew, self.k, max_iter=4, max_time=7200,
-                   project_W_each_iter=True, w_row_sum=1, T_in=self.T,
+                   project_W_each_iter=False, w_row_sum=1.0,
+                   t_row_sum=1.0, T_in=self.T,
+                   do_final_project_W=self.do_final_project_W,
                    fix_T=True, reg_w_l1=self.wr1, reg_w_l2=self.wr2,
                    reg_t_l1=self.tr1, reg_t_l2=self.tr2,
-                   negative_denom_correction=True,
                    random_state=self.random_state)
         return soln['W']
 
