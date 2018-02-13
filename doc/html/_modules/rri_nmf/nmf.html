@@ -1,0 +1,954 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>rri_nmf.nmf &mdash; rri_nmf 0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../../genindex.html"/>
+        <link rel="search" title="Search" href="../../search.html"/>
+    <link rel="top" title="rri_nmf 0.1 documentation" href="../../index.html"/>
+        <link rel="up" title="Module code" href="../index.html"/> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> rri_nmf
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <!-- Local TOC -->
+              <div class="local-toc"></div>
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">rri_nmf</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>rri_nmf.nmf</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for rri_nmf.nmf</h1><div class="highlight"><pre>
+<span></span><span class="c1"># standard library packages</span>
+<span class="c1"># ===============</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="k">import</span> <span class="n">sqrt</span><span class="p">,</span> <span class="n">floor</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="c1"># ------------------------------------------------------------------------------</span>
+
+<span class="c1"># packages installed with `conda install anaconda`</span>
+<span class="c1"># ================================================</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">scipy</span>
+<span class="kn">import</span> <span class="nn">scipy.sparse</span> <span class="k">as</span> <span class="nn">sparse</span>
+<span class="kn">from</span> <span class="nn">numexpr</span> <span class="k">import</span> <span class="n">evaluate</span> <span class="k">as</span> <span class="n">ne_eval</span>
+<span class="kn">import</span> <span class="nn">numexpr</span>
+
+<span class="kn">from</span> <span class="nn">scipy.stats</span> <span class="k">import</span> <span class="n">norm</span> <span class="k">as</span> <span class="n">gaussian</span>
+<span class="c1"># ------------------------------------------------------------------------------</span>
+
+<span class="c1"># local packages</span>
+<span class="c1"># ==============</span>
+<span class="kn">from</span> <span class="nn">matrixops</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">euclidean_proj_simplex</span><span class="p">,</span> <span class="n">normalize</span><span class="p">,</span> <span class="n">stack_matrices</span><span class="p">,</span>
+    <span class="n">proj_mat_to_simplex</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">optimization</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">first_last_stopping_condition</span><span class="p">,</span> <span class="n">universal_stopping_condition</span><span class="p">,</span> <span class="n">qf_min</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">initialization</span> <span class="k">import</span> <span class="n">initialize_nmf</span>
+<span class="c1"># ------------------------------------------------------------------------------</span>
+
+<span class="n">debug</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">eps_div_by_zero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">spacing</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>  <span class="c1"># added to denominators to avoid /0</span>
+
+
+<div class="viewcode-block" id="TrueObjComputer"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.nmf.TrueObjComputer">[docs]</a><span class="k">class</span> <span class="nc">TrueObjComputer</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">reg_w_l2</span><span class="p">,</span> <span class="n">reg_t_l2</span><span class="p">,</span> <span class="n">reg_w_l1</span><span class="p">,</span> <span class="n">reg_t_l1</span><span class="p">,</span> <span class="n">Wm</span><span class="p">,</span> <span class="n">wr</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trXTX</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">X</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reg_w_l2</span> <span class="o">=</span> <span class="n">reg_w_l2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reg_t_l2</span> <span class="o">=</span> <span class="n">reg_t_l2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reg_t_l1</span> <span class="o">=</span> <span class="n">reg_t_l1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reg_w_l1</span> <span class="o">=</span> <span class="n">reg_w_l1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Wm</span> <span class="o">=</span> <span class="n">Wm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">wr</span> <span class="o">=</span> <span class="n">wr</span>
+
+<div class="viewcode-block" id="TrueObjComputer.true_objective"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.nmf.TrueObjComputer.true_objective">[docs]</a>    <span class="k">def</span> <span class="nf">true_objective</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">):</span>
+        <span class="n">W2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">W</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">T2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">T1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">T</span><span class="p">))</span>
+        <span class="n">W1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">W</span><span class="p">))</span>
+
+        <span class="n">R</span> <span class="o">=</span> <span class="p">(</span><span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">))</span><span class="o">**</span><span class="mi">2</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">Wm</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Wm</span> <span class="o">*</span> <span class="n">R</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">wr</span> <span class="o">*</span> <span class="n">R</span>
+
+        <span class="n">base_obj</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">R</span><span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="n">base_obj</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">reg_w_l2</span> <span class="o">*</span> <span class="n">W2</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">reg_t_l2</span> <span class="o">*</span> <span class="n">T2</span> <span class="o">+</span> \
+              <span class="bp">self</span><span class="o">.</span><span class="n">reg_t_l1</span> <span class="o">*</span> <span class="n">T1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">reg_w_l1</span> <span class="o">*</span> <span class="n">W1</span>
+        <span class="k">return</span> <span class="n">obj</span></div></div>
+
+
+<span class="c1"># @jit</span>
+<div class="viewcode-block" id="nmf"><a class="viewcode-back" href="../../docs/source/rri_nmf.html#rri_nmf.nmf.nmf">[docs]</a><span class="k">def</span> <span class="nf">nmf</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">w_row</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">W_mat</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fix_W</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">fix_T</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">random_state</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="s1">&#39;nndsvd&#39;</span><span class="p">,</span> <span class="n">T_in</span><span class="o">=</span><span class="p">[],</span> <span class="n">W_in</span><span class="o">=</span><span class="p">[],</span>
+        <span class="n">max_iter</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">max_time</span><span class="o">=</span><span class="mi">600</span><span class="p">,</span> <span class="n">eps_stop</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span> <span class="n">compute_obj_each_iter</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">project_W_each_iter</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">w_row_sum</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">project_T_each_iter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">t_row_sum</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">early_stop</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reset_topic_method</span><span class="o">=</span><span class="s1">&#39;random&#39;</span><span class="p">,</span> <span class="n">fix_reset_seed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">reg_w_l2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reg_t_l2</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reg_w_l1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">reg_t_l1</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">negative_denom_correction</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">damping_w</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">damping_t</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">diagnostics</span><span class="o">=</span><span class="p">[],</span>
+        <span class="n">store_intermediate</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ind_rows_to_store</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">eps_gauss_t</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">delta_gauss_t</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the non-negative matrix factorization.</span>
+
+<span class="sd">    Factorize the n*d document*feature matrix `X` into the product `WT`</span>
+<span class="sd">    where `W` is a non-negative n*k doc*topic matrix and `T` is a</span>
+<span class="sd">    non-negative k*d topic*feature matrix. We use the term &#39;topic&#39;s to refer</span>
+<span class="sd">    to latent basis vectors. Documents are expressed as non-negative linear</span>
+<span class="sd">    combinations of topics.</span>
+
+<span class="sd">    :math:`\min_{W\geq 0, T\geq 0} ||X-WT||_F^2 + wr1||W||_1 + wr2||W||_2^2 + tr1||T||_1 + tr2||T||_2^2`</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    X : array_like</span>
+<span class="sd">        The n*d document-feature ndarray to be factorized.</span>
+<span class="sd">    k : int</span>
+<span class="sd">        Number of latent factors, i.e. the rank of the factorization.</span>
+<span class="sd">    w_row : array_like</span>
+
+<span class="sd">    W_mat</span>
+<span class="sd">    fix_W</span>
+<span class="sd">    fix_T</span>
+<span class="sd">    random_state</span>
+<span class="sd">    init</span>
+<span class="sd">    T_in</span>
+<span class="sd">    W_in</span>
+<span class="sd">    debug</span>
+<span class="sd">    max_iter</span>
+<span class="sd">    max_time</span>
+<span class="sd">    eps_stop</span>
+<span class="sd">    compute_obj_each_iter</span>
+<span class="sd">    project_W_each_iter</span>
+<span class="sd">    w_row_sum</span>
+<span class="sd">    project_T_each_iter</span>
+<span class="sd">    t_row_sum</span>
+<span class="sd">    early_stop</span>
+<span class="sd">    reset_topic_method</span>
+<span class="sd">    fix_reset_seed</span>
+<span class="sd">    reg_w_l2</span>
+<span class="sd">    reg_t_l2</span>
+<span class="sd">    reg_w_l1</span>
+<span class="sd">    reg_t_l1</span>
+<span class="sd">    negative_denom_correction</span>
+<span class="sd">    saddle_point_handling</span>
+<span class="sd">    damping_w</span>
+<span class="sd">    damping_t</span>
+<span class="sd">    diagnostics</span>
+<span class="sd">    store_intermediate</span>
+<span class="sd">    ind_rows_to_store</span>
+<span class="sd">    n_words_beam</span>
+<span class="sd">    eps_gauss_t</span>
+<span class="sd">    delta_gauss_t</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    W : array_like</span>
+<span class="sd">        n * k doc-topic weight matrix</span>
+<span class="sd">    T : array_like</span>
+<span class="sd">        k * d topic-feature matrix</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">debug</span><span class="p">,</span> <span class="n">eps_div_by_zero</span>
+
+    <span class="sd">&quot;&quot;&quot; Factorize non-negative [n*d] X as  non-negative [n*k] W x [k*d] T</span>
+
+<span class="sd">    :param X: ndarray of shape (n, d)</span>
+<span class="sd">    :param k: inner dim (and rank) of W*T</span>
+<span class="sd">    :param w_row: ndarray of shape (n, ) w_row[i] is weight assigned to reconst</span>
+<span class="sd">                  error of row X[i,:]. None is equivalent to w_row = 1 forall i</span>
+<span class="sd">    :param W_mat: ndarray of shape (n,d) W_mat[i,j] is the weight of X[i,j] for</span>
+<span class="sd">            the objective function</span>
+<span class="sd">    :param fix_W: W isn&#39;t updated if True</span>
+<span class="sd">    :param fix_T: T isn&#39;t updated if True</span>
+<span class="sd">    :param random_state: integer used to seed the initialization</span>
+<span class="sd">    :param init: the initialization method.</span>
+<span class="sd">            &#39;nndsvd&#39; uses randomized partial SVD</span>
+<span class="sd">            &#39;coherence_pmi&#39; uses beam search on the word co-occurrence matrix</span>
+
+<span class="sd">    :param debug: integer setting debug level, higher = more debug is shown.</span>
+<span class="sd">                    1= iteration count &amp; timer</span>
+<span class="sd">                    2= plot objective + 1</span>
+<span class="sd">    :param max_iter: maximum number of iterations. 1 it = 1 full update of W,T</span>
+<span class="sd">    :param max_time: maximum time (in sec)</span>
+<span class="sd">    :param eps_stop: (may be deprecated) stop if</span>
+<span class="sd">                                (obj[-1]-obj[-2])/(obj[0]-obj[1]) &lt;= eps_stop</span>
+<span class="sd">    :param compute_obj_each_iter [True] required for updating the obj_history</span>
+<span class="sd">            output as well as for using eps_stop, but may slow down everything</span>
+<span class="sd">            by 2x</span>
+<span class="sd">    :param project_W_each_iter: project each row of W onto l_1 simplex each it</span>
+<span class="sd">                        if False only project once at the end. Projecting</span>
+<span class="sd">                        each iter is an extra O(nklogk) work, but improves obj</span>
+<span class="sd">                        by around 1%</span>
+<span class="sd">    :param w_row_sum a scalar or vector that each row of W should sum to</span>
+<span class="sd">        should be equal to w_row if w_row is used</span>
+
+<span class="sd">    :param early_stop a function that takes X, W, T and outputs a validation</span>
+<span class="sd">    score</span>
+<span class="sd">        if this score is higher than the previous iteration, we stop and return</span>
+<span class="sd">        [None] by default</span>
+<span class="sd">    :param reset_topic_method [&#39;max_resid_document&#39;] or &#39;random&#39;; how should</span>
+<span class="sd">        we reset topics that become empty</span>
+<span class="sd">    :param fix_reset_seed [False] should the same seed be used to reset empty</span>
+<span class="sd">        topics and their weights? True is good for comparing to distributed</span>
+<span class="sd">        computation.</span>
+
+<span class="sd">    :param reg_w_l2 : regularization penalty applied to \ell_2 norm of</span>
+<span class="sd">        columns of W matrix. Positive =&gt; more dense solutions; Negative =&gt; more</span>
+<span class="sd">        sparse. Reason: (1,0) has a high ell_2 norm than (0.5, 0.5), so if we</span>
+<span class="sd">        are subtracting the norm from the objective, we will favor sparser.</span>
+<span class="sd">    :param reg_t_l2 : regularization penality applied to \ell_2 norm of rows</span>
+<span class="sd">        of T matrix. Positive =&gt; more dense solutions; Negative =&gt; more sparse.</span>
+<span class="sd">    :param reg_w_l1 : regularization penality applied to \ell_1 norm of</span>
+<span class="sd">        columns of W. Negative =&gt; more dense; Positive =&gt; more sparse.</span>
+<span class="sd">    :param reg_t_l1 : regularization penalty applied to \ell_1 norm of rows</span>
+<span class="sd">        of T. Negative =&gt; more dense; Positive =&gt; more sparse.</span>
+<span class="sd">    :param negative_denom_correction : boolean, True by default. When</span>
+<span class="sd">        negative l_2 regularization is used, the 2nd derivatives of W and T</span>
+<span class="sd">        (Hessians) may become negative (negative definite), so we need to</span>
+<span class="sd">        check the boundaries of our constraint set for optimal solutions</span>
+<span class="sd">        rather than simply set the first derivative to 0.</span>
+<span class="sd">    :param damping_w: weight of previous iteration&#39;s w added to current w</span>
+<span class="sd">    :param damping_t: weight of previous iteration&#39;s t added to current t</span>
+<span class="sd">    :param diagnosticics: a function that should be measured at each iter</span>
+<span class="sd">        outputs will be in &#39;diagnostic&#39; in same order. Each function must</span>
+<span class="sd">        take X, W, T</span>
+<span class="sd">    :param store_intermediate : boolean [False] store the numerators and</span>
+<span class="sd">        denominators for each topic update for each iteration (used for</span>
+<span class="sd">        detailed analysis or debuging)</span>
+<span class="sd">    :param ind_rows_to_store : list or None (default) when storing intermediate results</span>
+<span class="sd">        they can be stored for all rows (if None) or a given list of rows. The</span>
+<span class="sd">        use is to see whether a particular subset of rows has a particular</span>
+<span class="sd">        effect on the intermediate results</span>
+<span class="sd">    :param eps_gauss_t : numeric epsilon for Gaussian mechanism for</span>
+<span class="sd">        calculation of T in each iteration</span>
+<span class="sd">    :param delta_gauss_t : numeric delta for Gaussian mechanism for</span>
+<span class="sd">        calculation of T in each iteration</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">rtv</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">diagnostics</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="n">diagnostics</span> <span class="o">=</span> <span class="p">[</span><span class="n">diagnostics</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">diagnostics</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;diagnostics&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">diagnostics</span><span class="p">:</span>
+            <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;diagnostics&#39;</span><span class="p">][</span><span class="n">func</span><span class="o">.</span><span class="n">func_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">store_intermediate</span><span class="p">:</span>
+        <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;numer_W&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;denom_W&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="n">random_state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">random_state</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span> <span class="o">%</span> <span class="mi">4294967296</span>
+
+    <span class="n">t_global_start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">max_time</span> <span class="o">=</span> <span class="n">max_time</span> <span class="o">-</span> <span class="mi">10</span>  <span class="c1"># subtract 10sec for projecting W</span>
+
+    <span class="n">n</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="n">X_orig</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">w_row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">X_orig</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">w_row</span><span class="p">)</span> <span class="o">*</span> <span class="n">X</span>  <span class="c1"># needs to be sqrt since we do (wX-WT)^2</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">w_row_sum</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">w_row_sum</span><span class="p">):</span>
+        <span class="n">w_row_sum</span> <span class="o">=</span> <span class="n">w_row_sum</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">w_row_sum</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">w_row</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">w_row_sum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">w_row_sum</span><span class="p">)</span>  <span class="c1"># rows of X will be multiplied by</span>
+            <span class="c1">#  sqrt of w_row, so the rows of W should also sum to sqrt of w_row</span>
+
+    <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;=</span> <span class="n">k</span><span class="p">:</span>
+        <span class="n">init</span> <span class="o">=</span> <span class="s1">&#39;random&#39;</span>
+
+    <span class="k">def</span> <span class="nf">project_and_check_reset_t</span><span class="p">():</span>
+        <span class="n">nt1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:])</span>
+
+        <span class="k">if</span> <span class="n">nt1</span> <span class="o">&gt;</span> <span class="mf">1e-10</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">project_T_each_iter</span><span class="p">:</span>
+                <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">euclidean_proj_simplex</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:],</span> <span class="n">s</span><span class="o">=</span><span class="n">t_row_sum</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># pick the largest positive residual</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t</span><span class="s1">Reseting T</span><span class="si">{t}</span><span class="s1"> method=</span><span class="si">{m}</span><span class="s1"> fixed_seed={&#39;</span>
+                      <span class="s1">&#39;s}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">reset_topic_method</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">fix_reset_seed</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">reset_topic_method</span> <span class="o">==</span> <span class="s1">&#39;max_resid_document&#39;</span><span class="p">:</span>
+                <span class="n">Rt</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">X</span> <span class="o">-</span> <span class="n">W</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">T</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="n">Rts</span> <span class="o">=</span> <span class="p">(</span><span class="n">Rt</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">mi</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">Rts</span><span class="p">)</span>
+                <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">Rt</span><span class="p">[</span><span class="n">mi</span><span class="p">,</span> <span class="p">:]</span>
+            <span class="k">elif</span> <span class="n">reset_topic_method</span> <span class="o">==</span> <span class="s1">&#39;random&#39;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">fix_reset_seed</span><span class="p">:</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+                <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span>
+                <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">/=</span> <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">5</span> <span class="ow">and</span> <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">50</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t\t</span><span class="s1">Reset to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]))</span>
+
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">clock</span><span class="p">()</span>
+
+    <span class="n">W</span><span class="p">,</span> <span class="n">T</span> <span class="o">=</span> <span class="n">_initialize_and_validate</span><span class="p">(</span><span class="o">**</span><span class="nb">locals</span><span class="p">())</span>
+
+    <span class="n">iter_cputime</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># time per iteration</span>
+    <span class="n">proj_gradient_norm</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># the norm of projected gradients is used as a</span>
+    <span class="c1"># stopping condition. Thesis Ho section 3.5</span>
+
+    <span class="k">if</span> <span class="n">W_mat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;WARNING: W_mat is currently implemented inefficiently&#39;</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">rshp</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot; make it (n,1) instead of (n,)&quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">numexpr</span><span class="o">.</span><span class="n">set_num_threads</span><span class="p">(</span><span class="n">numexpr</span><span class="o">.</span><span class="n">detect_number_of_cores</span><span class="p">())</span>
+
+    <span class="k">if</span> <span class="n">early_stop</span><span class="p">:</span>
+        <span class="n">last_score</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="n">W_prev</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+        <span class="n">T_prev</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+
+    <span class="n">obj_history</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">compute_obj_each_iter</span><span class="p">:</span>
+        <span class="n">OBJ</span> <span class="o">=</span> <span class="n">TrueObjComputer</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">reg_w_l1</span><span class="o">=</span><span class="n">reg_w_l1</span><span class="p">,</span> <span class="n">reg_t_l2</span><span class="o">=</span><span class="n">reg_t_l2</span><span class="p">,</span>
+                              <span class="n">reg_w_l2</span><span class="o">=</span><span class="n">reg_w_l2</span><span class="p">,</span> <span class="n">reg_t_l1</span><span class="o">=</span><span class="n">reg_t_l1</span><span class="p">,</span>
+                              <span class="n">Wm</span><span class="o">=</span><span class="n">W_mat</span><span class="p">,</span> <span class="n">wr</span><span class="o">=</span><span class="n">w_row</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">diagnostics</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">diagnostics</span><span class="p">:</span>
+            <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;diagnostics&#39;</span><span class="p">][</span><span class="n">func</span><span class="o">.</span><span class="n">func_name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">func</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">iter_no</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Starting iteration {&#39;</span>
+                  <span class="s1">&#39;iter_no}</span><span class="se">\n</span><span class="s1">----------------------&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">iter_no</span><span class="o">=</span><span class="n">iter_no</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">early_stop</span><span class="p">:</span>
+            <span class="n">this_score</span> <span class="o">=</span> <span class="n">early_stop</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Iter </span><span class="si">%d</span><span class="s1"> stopping score </span><span class="si">%.3f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">iter_no</span><span class="p">,</span> <span class="n">this_score</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">this_score</span> <span class="o">&gt;</span> <span class="n">last_score</span><span class="p">:</span>  <span class="c1"># STOP EARLY</span>
+                <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Stopping early at iter </span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">iter_no</span><span class="p">)</span>
+                <span class="n">W</span> <span class="o">=</span> <span class="n">W_prev</span>
+                <span class="n">T</span> <span class="o">=</span> <span class="n">T_prev</span>
+                <span class="k">break</span>
+            <span class="c1"># else this_score &lt;= last_score</span>
+            <span class="n">last_score</span> <span class="o">=</span> <span class="n">this_score</span>
+            <span class="n">W_prev</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+            <span class="n">T_prev</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">it_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">grad_norm_this_iter</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">store_intermediate</span><span class="p">:</span>
+            <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;numer_W&#39;</span><span class="p">][</span><span class="n">iter_no</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;denom_W&#39;</span><span class="p">][</span><span class="n">iter_no</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">k</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">Topic </span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">t</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">fix_T</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t</span><span class="s1">T</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">W_mat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+                    <span class="n">w</span> <span class="o">=</span> <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span>
+                    <span class="n">wX</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+                    <span class="n">wW</span> <span class="o">=</span> <span class="n">w</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">)</span>
+                    <span class="n">wW</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="n">wR</span> <span class="o">=</span> <span class="n">wX</span> <span class="o">-</span> <span class="n">wW</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+                    <span class="n">nw</span> <span class="o">=</span> <span class="p">(</span><span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>  <span class="c1"># ||W[:, t]||^2, this is a scalar</span>
+                    <span class="k">if</span> <span class="n">store_intermediate</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">ind_rows_to_store</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+                        <span class="n">wR_store</span> <span class="o">=</span> <span class="n">wR</span>
+                        <span class="n">nw_store</span> <span class="o">=</span> <span class="n">nw</span>
+                    <span class="k">elif</span> <span class="n">store_intermediate</span> <span class="ow">and</span> <span class="n">ind_rows_to_store</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">ws</span> <span class="o">=</span> <span class="n">W</span><span class="p">[</span><span class="n">ind_rows_to_store</span><span class="p">,</span> <span class="p">:][:,</span> <span class="n">t</span><span class="p">]</span>
+                        <span class="n">wXs</span> <span class="o">=</span> <span class="n">ws</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">X</span><span class="p">[</span><span class="n">ind_rows_to_store</span><span class="p">,</span> <span class="p">:])</span>
+                        <span class="n">wWs</span> <span class="o">=</span> <span class="n">ws</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">[</span><span class="n">ind_rows_to_store</span><span class="p">,</span> <span class="p">:])</span>
+                        <span class="n">wWs</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                        <span class="n">wR_store</span> <span class="o">=</span> <span class="n">wXs</span> <span class="o">-</span> <span class="n">wWs</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+                        <span class="n">nw_store</span> <span class="o">=</span> <span class="p">(</span><span class="n">ws</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">Rt</span> <span class="o">=</span> <span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rshp</span><span class="p">(</span><span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]),</span>
+                                                   <span class="n">rshp</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+                    <span class="n">Rt</span> <span class="o">=</span> <span class="n">ne_eval</span><span class="p">(</span><span class="s1">&#39;Rt * W_mat&#39;</span><span class="p">)</span>
+                    <span class="n">wR</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">Rt</span><span class="p">)</span>
+                    <span class="n">nw</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rshp</span><span class="p">(</span><span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">W_mat</span><span class="p">)</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+                    <span class="c1"># this is a vector</span>
+                    <span class="c1">#  but python broadcasting implements Lemma 6.5 correct</span>
+                    <span class="k">if</span> <span class="n">store_intermediate</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="n">ind_rows_to_store</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+                        <span class="n">wR_store</span> <span class="o">=</span> <span class="n">wR</span>
+                        <span class="n">nw_store</span> <span class="o">=</span> <span class="n">nw</span>
+                    <span class="k">elif</span> <span class="n">store_intermediate</span> <span class="ow">and</span> <span class="n">ind_rows_to_store</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">wR_store</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">[</span><span class="n">ind_rows_to_store</span><span class="p">,</span> <span class="p">:][:,</span> <span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">Rt</span><span class="p">[</span><span class="n">ind_rows_to_store</span><span class="p">,</span> <span class="p">:])</span>
+                        <span class="n">nw_store</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rshp</span><span class="p">(</span><span class="n">W</span><span class="p">[</span><span class="n">ind_rows_to_store</span><span class="p">,</span> <span class="p">:][:,</span> <span class="n">t</span><span class="p">]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+                                          <span class="n">W_mat</span><span class="p">[</span><span class="n">ind_rows_to_store</span><span class="p">,</span> <span class="p">:])</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="n">eps_gauss_t</span> <span class="ow">and</span> <span class="n">delta_gauss_t</span><span class="p">:</span>
+                    <span class="c1"># we received non-Nones for both and the intent is to use</span>
+                    <span class="c1">#  the Gaussian differentially private mechanism</span>
+                    <span class="c1">#  pg 261 of Dwork Roth Differential Privacy</span>
+                    <span class="n">c2</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="mf">1.25</span> <span class="o">/</span> <span class="n">delta_gauss_t</span><span class="p">)</span>
+                    <span class="n">df2</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># an upper bound on the l2 sensitivity here</span>
+                    <span class="n">sigma2</span> <span class="o">=</span> <span class="n">c2</span> <span class="o">*</span> <span class="n">df2</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="n">eps_gauss_t</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+                    <span class="n">N</span> <span class="o">=</span> <span class="n">gaussian</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">sigma2</span><span class="p">))</span>  <span class="c1"># scipy&#39;s norm takes mean,</span>
+                    <span class="c1">#  std</span>
+                    <span class="n">wR</span> <span class="o">+=</span> <span class="n">N</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">wR</span><span class="o">.</span><span class="n">size</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">wR</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+                    <span class="n">nw</span> <span class="o">+=</span> <span class="n">N</span><span class="o">.</span><span class="n">rvs</span><span class="p">(</span><span class="n">nw</span><span class="o">.</span><span class="n">size</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">nw</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+                <span class="n">numer</span> <span class="o">=</span> <span class="p">(</span><span class="n">wR</span> <span class="o">-</span> <span class="n">reg_t_l1</span><span class="p">)</span>
+                <span class="n">denom</span> <span class="o">=</span> <span class="n">nw</span> <span class="o">+</span> <span class="n">reg_t_l2</span>
+                <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t</span><span class="s1">denom (||W_t||+rt2) == {&#39;</span>
+                          <span class="s1">&#39;0:.2e}+</span><span class="si">{1:.2e}</span><span class="s1"> = </span><span class="si">{2:.2e}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nw</span><span class="p">,</span> <span class="n">reg_t_l2</span><span class="p">,</span>
+                                                            <span class="n">scipy</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>
+                                                                <span class="n">nw</span> <span class="o">+</span> <span class="n">reg_t_l2</span><span class="p">,</span>
+                                                                <span class="mi">0</span><span class="p">)))</span>
+
+                <span class="k">if</span> <span class="n">store_intermediate</span><span class="p">:</span>
+                    <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;numer_W&#39;</span><span class="p">][</span><span class="n">iter_no</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">wR_store</span><span class="p">)</span>
+                    <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;denom_W&#39;</span><span class="p">][</span><span class="n">iter_no</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nw_store</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">damping_t</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">numer</span> <span class="o">=</span> <span class="n">numer</span> <span class="o">+</span> <span class="n">damping_t</span> <span class="o">*</span> <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span>
+
+                <span class="c1"># we need to divide everyithng because denom may make things</span>
+                <span class="c1"># negative</span>
+                <span class="c1"># if iter_no == 1:</span>
+                <span class="c1">#     print(t)</span>
+                <span class="c1">#</span>
+                <span class="c1"># import pdb; pdb.set_trace()</span>
+                <span class="k">if</span> <span class="n">negative_denom_correction</span><span class="p">:</span>
+                    <span class="n">project_and_check_reset_t</span><span class="p">()</span>
+
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">denom</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">negative_denom_correction</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t</span><span class="s1">denom &gt; 0 using soln of grad==0&#39;</span><span class="p">)</span>
+                    <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">numer</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">denom</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">spacing</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">denom</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>  <span class="c1"># correct to include ==0 here because</span>
+                    <span class="c1"># then</span>
+                    <span class="c1"># the objective is a line, so minimum will be at boundary</span>
+                    <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="c1"># print(&#39;\t\t\tlin={}&#39;.format(-numer))</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t</span><span class="s1">denom &lt;= 0 using qf_min&#39;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                        <span class="n">obj_before</span> <span class="o">=</span> <span class="n">OBJ</span><span class="o">.</span><span class="n">true_objective</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+                    <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">qf_min</span><span class="p">(</span><span class="o">-</span><span class="n">numer</span><span class="p">,</span> <span class="n">denom</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">t_row_sum</span><span class="p">)</span>  <span class="c1">#</span>
+                    <span class="c1"># .reshape((1,d))</span>
+                    <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                        <span class="n">obj_after</span> <span class="o">=</span> <span class="n">OBJ</span><span class="o">.</span><span class="n">true_objective</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t\t</span><span class="s1">Change in obj = </span><span class="si">{0:.2e}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                <span class="n">obj_after</span> <span class="o">-</span> <span class="n">obj_before</span><span class="p">))</span>
+                <span class="c1">#</span>
+                <span class="n">project_and_check_reset_t</span><span class="p">()</span>
+
+                <span class="c1"># Ho says to compute gradient after normalization (Section 3.5)</span>
+                <span class="n">grad</span> <span class="o">=</span> <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">*</span> <span class="n">denom</span> <span class="o">-</span> <span class="n">numer</span>  <span class="c1"># x*d - n = df/dx</span>
+                <span class="n">grad</span> <span class="o">=</span> <span class="n">grad</span><span class="o">**</span><span class="mi">2</span>  <span class="c1"># for purposes of computing Frob norm</span>
+                <span class="k">if</span> <span class="n">iter_no</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># dont use proj grad on first iter (Lin 2007)</span>
+                    <span class="n">grad_norm_this_iter</span> <span class="o">+=</span> <span class="n">_projected_gradient</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span> <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:],</span>
+                                                               <span class="n">lb</span><span class="o">=-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span>
+                                                               <span class="n">ub</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">grad_norm_this_iter</span> <span class="o">+=</span> <span class="n">_projected_gradient</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span> <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:])</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">fix_W</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t</span><span class="s1">W</span><span class="si">{t}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">))</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">W_mat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+                    <span class="n">Xt</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+                    <span class="n">Tt</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+                    <span class="n">Tt</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="n">Rt</span> <span class="o">=</span> <span class="n">Xt</span> <span class="o">-</span> <span class="n">W</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Tt</span><span class="p">)</span>
+                    <span class="n">nt</span> <span class="o">=</span> <span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>  <span class="c1"># ||T[t, :]||^2, a scalar</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">Rt</span> <span class="o">=</span> <span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">rshp</span><span class="p">(</span><span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]),</span>
+                                                   <span class="n">rshp</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+                    <span class="n">Rt</span> <span class="o">=</span> <span class="n">ne_eval</span><span class="p">(</span><span class="s1">&#39;W_mat * Rt&#39;</span><span class="p">)</span>
+                    <span class="n">Rt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">Rt</span><span class="p">,</span> <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+                    <span class="n">nt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W_mat</span><span class="p">,</span> <span class="n">rshp</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+                <span class="n">numer</span> <span class="o">=</span> <span class="n">Rt</span> <span class="o">-</span> <span class="n">reg_w_l1</span>
+                <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">damping_w</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">numer</span> <span class="o">=</span> <span class="n">numer</span> <span class="o">+</span> <span class="n">damping_w</span> <span class="o">*</span> <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span>
+
+                <span class="n">denom</span> <span class="o">=</span> <span class="n">nt</span> <span class="o">+</span> <span class="n">reg_w_l2</span>
+                <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t</span><span class="s1">denom W (||T_t||+rw2) == </span><span class="si">{0:.2e}</span><span class="s1">+{&#39;</span>
+                          <span class="s1">&#39;1:.2e} = </span><span class="si">{2:.2e}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">nt</span><span class="p">,</span> <span class="n">reg_w_l2</span><span class="p">,</span>
+                                                    <span class="n">nt</span> <span class="o">+</span> <span class="n">reg_w_l2</span><span class="p">))</span>
+
+                <span class="n">nw1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">])</span>
+                <span class="k">if</span> <span class="kc">True</span> <span class="ow">or</span> <span class="n">nw1</span> <span class="o">&gt;</span> <span class="mf">1e-10</span><span class="p">:</span>
+                    <span class="k">pass</span>
+                <span class="k">else</span><span class="p">:</span>  <span class="c1"># pick the largest positive residual</span>
+                    <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t</span><span class="s1">Reseting W</span><span class="si">{t}</span><span class="s1"> method=</span><span class="si">{m}</span><span class="s1"> fixed_seed={&#39;</span>
+                              <span class="s1">&#39;s}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">reset_topic_method</span><span class="p">,</span>
+                                          <span class="n">s</span><span class="o">=</span><span class="n">fix_reset_seed</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">reset_topic_method</span> <span class="o">==</span> <span class="s1">&#39;max_resid_document&#39;</span><span class="p">:</span>
+                        <span class="n">Rt</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">X</span> <span class="o">-</span> <span class="n">W</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">T</span><span class="p">),</span> <span class="mi">0</span><span class="p">)</span>
+                        <span class="n">Rts</span> <span class="o">=</span> <span class="p">(</span><span class="n">Rt</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+                        <span class="n">mi</span> <span class="o">=</span> <span class="n">scipy</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">Rts</span><span class="p">)</span>
+                        <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">Rt</span><span class="p">[</span><span class="n">mi</span><span class="p">,</span> <span class="p">:]</span>
+                    <span class="k">elif</span> <span class="n">reset_topic_method</span> <span class="o">==</span> <span class="s1">&#39;random&#39;</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">fix_reset_seed</span><span class="p">:</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+                        <span class="c1"># T[t, :] = np.random.rand(1, d)</span>
+                        <span class="c1"># T[t, :] /= T[t, :].sum()</span>
+                        <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">reset_topic_method</span> <span class="o">==</span> <span class="s1">&#39;iterative_T_only&#39;</span><span class="p">:</span>
+                        <span class="n">_</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">iterative_minimizer</span><span class="p">(</span><span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">))</span>
+                        <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">T</span>
+                        <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">/=</span> <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                    <span class="k">elif</span> <span class="n">reset_topic_method</span> <span class="o">==</span> <span class="s1">&#39;iterative_refinement&#39;</span><span class="p">:</span>
+                        <span class="kn">import</span> <span class="nn">pdb</span><span class="p">;</span>
+                        <span class="n">pdb</span><span class="o">.</span><span class="n">set_trace</span><span class="p">()</span>
+
+                        <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">iterative_minimizer</span><span class="p">(</span><span class="n">X</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">))</span>
+                        <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">T</span>
+                        <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span> <span class="o">/=</span> <span class="n">T</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
+                        <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">5</span> <span class="ow">and</span> <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">50</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t\t</span><span class="s1">W reset to&#39;</span><span class="p">,</span> <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">])</span>
+
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">denom</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">negative_denom_correction</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">4</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t</span><span class="s1">denom &gt; 0 using soln of grad==0&#39;</span><span class="p">)</span>
+                    <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">numer</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">denom</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">spacing</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+                <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">denom</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                        <span class="c1"># print(&#39;\t\t\tlin={}&#39;.format(-numer))</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t</span><span class="s1">denom &lt;= 0 using qf_min&#39;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                        <span class="n">obj_before</span> <span class="o">=</span> <span class="n">OBJ</span><span class="o">.</span><span class="n">true_objective</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+                    <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">qf_min</span><span class="p">(</span><span class="o">-</span><span class="n">numer</span><span class="p">,</span> <span class="n">denom</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">w_correction</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="c1"># .reshape((</span>
+                    <span class="c1"># n,1))</span>
+                    <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                        <span class="n">obj_after</span> <span class="o">=</span> <span class="n">OBJ</span><span class="o">.</span><span class="n">true_objective</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t\t</span><span class="s1">Change in obj = </span><span class="si">{0:.2e}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                <span class="n">obj_after</span> <span class="o">-</span> <span class="n">obj_before</span><span class="p">))</span>
+
+                <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">),</span> <span class="s1">&#39;W contains negative entries&#39;</span>
+
+                <span class="c1"># import pdb; pdb.set_trace()</span>
+                <span class="n">grad</span> <span class="o">=</span> <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">]</span> <span class="o">*</span> <span class="n">denom</span> <span class="o">-</span> <span class="n">numer</span>
+                <span class="n">grad</span> <span class="o">=</span> <span class="n">grad</span><span class="o">**</span><span class="mi">2</span>  <span class="c1"># for purposes of computing Frob norm</span>
+                <span class="k">if</span> <span class="n">iter_no</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># dont use proj grad on first iter (Lin 2007)</span>
+                    <span class="n">grad_norm_this_iter</span> <span class="o">+=</span> <span class="n">_projected_gradient</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span> <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">],</span>
+                                                               <span class="n">lb</span><span class="o">=-</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span>
+                                                               <span class="n">ub</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">grad_norm_this_iter</span> <span class="o">+=</span> <span class="n">_projected_gradient</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span> <span class="n">W</span><span class="p">[:,</span> <span class="n">t</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="n">project_W_each_iter</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">fix_W</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">w_row_sum</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">After iter </span><span class="si">{iter_no}</span><span class="s1"> projecting each W row&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">iter_no</span><span class="o">=</span><span class="n">iter_no</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">5</span> <span class="ow">and</span> <span class="n">W</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">50</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Before projection:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">reg_w_l2</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">T</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">negative_denom_correction</span> <span class="ow">or</span> <span class="n">reg_w_l2</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="c1"># print(&#39;\t\t\tlin={}&#39;.format(-numer))</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t</span><span class="s1">denom &gt; 0 using proj_to_simplex to proj W&#39;</span><span class="p">)</span>
+                <span class="n">W</span> <span class="o">=</span> <span class="n">proj_mat_to_simplex</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">w_row_sum</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="c1"># print(&#39;\t\t\tlin={}&#39;.format(-numer))</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t</span><span class="s1">denom &lt;= 0 using qf_min to proj W&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="n">obj_before</span> <span class="o">=</span> <span class="n">OBJ</span><span class="o">.</span><span class="n">true_objective</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+                    <span class="n">W</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">qf_min</span><span class="p">(</span><span class="o">-</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">T</span><span class="p">),</span> <span class="n">c</span><span class="p">,</span>
+                                     <span class="n">s</span><span class="o">=</span><span class="n">w_row_sum</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">k</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+                    <span class="n">obj_after</span> <span class="o">=</span> <span class="n">OBJ</span><span class="o">.</span><span class="n">true_objective</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t\t\t\t</span><span class="s1">Change in obj = </span><span class="si">{0:.2e}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="n">obj_after</span> <span class="o">-</span> <span class="n">obj_before</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">5</span> <span class="ow">and</span> <span class="n">W</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">50</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;After projection:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">compute_obj_each_iter</span><span class="p">:</span>
+            <span class="n">obj_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">OBJ</span><span class="o">.</span><span class="n">true_objective</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Obj: </span><span class="si">{0:3.3e}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">obj_history</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">iter_cputime</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">clock</span><span class="p">())</span>
+
+        <span class="n">proj_gradient_norm</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">grad_norm_this_iter</span><span class="p">))</span>
+
+        <span class="c1"># run diagnostics after timing</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">diagnostics</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">func</span> <span class="ow">in</span> <span class="n">diagnostics</span><span class="p">:</span>
+                <span class="n">dval</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+                <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;diagnostics&#39;</span><span class="p">][</span><span class="n">func</span><span class="o">.</span><span class="n">func_name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dval</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Iter </span><span class="si">{0}</span><span class="s1"> </span><span class="si">{1}</span><span class="s1">=</span><span class="si">{2}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">iter_no</span><span class="p">,</span> <span class="n">func</span><span class="o">.</span><span class="n">func_name</span><span class="p">,</span>
+                                                    <span class="n">dval</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">t_now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Iter done; ||grad_i||/||grad_1||=</span><span class="si">%.3e</span><span class="s1">; Took </span><span class="si">%.3f</span><span class="s1">sec&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">grad_norm_this_iter</span><span class="p">)</span> <span class="o">/</span> <span class="n">proj_gradient_norm</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">t_now</span> <span class="o">-</span> <span class="n">it_start_time</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">5</span> <span class="ow">and</span> <span class="n">W</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">50</span> <span class="ow">and</span> <span class="n">T</span><span class="o">.</span><span class="n">size</span> <span class="o">&lt;=</span> <span class="mi">50</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;W:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">W</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;T:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">T</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t_global_start</span> <span class="o">&gt;=</span> <span class="n">max_time</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">STOPPING because max_time after iter </span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">iter_no</span><span class="p">)</span>
+            <span class="k">break</span>
+
+        <span class="k">if</span> <span class="n">first_last_stopping_condition</span><span class="p">(</span><span class="n">proj_gradient_norm</span><span class="p">,</span>
+                                         <span class="n">eps_stop</span><span class="o">=</span><span class="n">eps_stop</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span>
+                    <span class="n">W_mat</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+            <span class="c1"># dont use proj grad stop cond if recsys</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                        <span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">STOPPING because proj grad norm after iter </span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span>
+                        <span class="n">iter_no</span><span class="p">)</span>
+            <span class="k">break</span>
+
+        <span class="k">if</span> <span class="n">compute_obj_each_iter</span> <span class="ow">and</span> <span class="n">universal_stopping_condition</span><span class="p">(</span><span class="n">obj_history</span><span class="p">,</span>
+                                                                  <span class="n">eps_stop</span><span class="o">=</span><span class="n">eps_stop</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                        <span class="s1">&#39;</span><span class="se">\n\n</span><span class="s1">STOPPING because obj_history after iter </span><span class="si">%d</span><span class="s1">&#39;</span> <span class="o">%</span>
+                        <span class="n">iter_no</span><span class="p">)</span>
+            <span class="k">break</span>
+
+    <span class="n">iter_cputime</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="o">-</span> <span class="n">start_time</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">iter_cputime</span><span class="p">]</span>
+
+    <span class="c1"># project after completing iterations</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">project_W_each_iter</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">w_row_sum</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">fix_W</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">w_row_sum</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Post completion W row projection to </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">w_row_sum</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="n">W</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">euclidean_proj_simplex</span><span class="p">(</span><span class="n">W</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:],</span> <span class="n">s</span><span class="o">=</span><span class="n">w_row_sum</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># w_row_sum is a vector with a individual sum for each row</span>
+            <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Post completion W row-wise projection&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+                <span class="n">W</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">euclidean_proj_simplex</span><span class="p">(</span><span class="n">W</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:],</span> <span class="n">s</span><span class="o">=</span><span class="n">w_row_sum</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">w_row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">sub</span> <span class="o">=</span> <span class="n">nmf</span><span class="p">(</span><span class="n">X_orig</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">T_in</span><span class="o">=</span><span class="n">T</span><span class="p">,</span> <span class="n">fix_T</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                  <span class="n">w_row_sum</span><span class="o">=</span><span class="n">w_row_sum</span><span class="p">,</span> <span class="n">project_W_each_iter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                  <span class="n">compute_obj_each_iter</span><span class="o">=</span><span class="n">compute_obj_each_iter</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">oh</span> <span class="ow">in</span> <span class="n">sub</span><span class="p">[</span><span class="s1">&#39;obj_history&#39;</span><span class="p">]:</span>
+            <span class="n">obj_history</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">oh</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">itc</span> <span class="ow">in</span> <span class="n">sub</span><span class="p">[</span><span class="s1">&#39;iter_cputime&#39;</span><span class="p">]:</span>
+            <span class="n">iter_cputime</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">itc</span><span class="p">)</span>
+        <span class="n">W</span> <span class="o">=</span> <span class="n">sub</span><span class="p">[</span><span class="s1">&#39;W&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">store_intermediate</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">itno</span> <span class="ow">in</span> <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;numer_W&#39;</span><span class="p">]:</span>
+            <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;numer_W&#39;</span><span class="p">][</span><span class="n">itno</span><span class="p">]</span> <span class="o">=</span> <span class="n">stack_matrices</span><span class="p">(</span><span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;numer_W&#39;</span><span class="p">][</span><span class="n">itno</span><span class="p">],</span>
+                                                  <span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                                                          <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">row</span><span class="o">.</span><span class="n">size</span><span class="p">)))</span>
+        <span class="k">for</span> <span class="n">itno</span> <span class="ow">in</span> <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;denom_W&#39;</span><span class="p">]:</span>
+            <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;denom_W&#39;</span><span class="p">][</span><span class="n">itno</span><span class="p">]</span> <span class="o">=</span> <span class="n">stack_matrices</span><span class="p">(</span><span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;denom_W&#39;</span><span class="p">][</span><span class="n">itno</span><span class="p">],</span>
+                                                  <span class="k">lambda</span> <span class="n">row</span><span class="p">:</span> <span class="n">row</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+                                                          <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">row</span><span class="o">.</span><span class="n">size</span><span class="p">)))</span>
+
+    <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;W&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">W</span>
+    <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;T&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">T</span>
+    <span class="k">if</span> <span class="n">compute_obj_each_iter</span><span class="p">:</span>
+        <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;obj_history&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">obj_history</span>
+        <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;obj_calculator&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">OBJ</span>
+    <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;proj_gradient_norm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">proj_gradient_norm</span>
+    <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;iter_cputime&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">iter_cputime</span>
+    <span class="n">rtv</span><span class="p">[</span><span class="s1">&#39;random_state&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">random_state</span>
+
+    <span class="k">return</span> <span class="n">rtv</span></div>
+
+
+<span class="k">def</span> <span class="nf">_projected_gradient</span><span class="p">(</span><span class="n">grad</span><span class="p">,</span> <span class="n">vec</span><span class="p">,</span> <span class="n">lb</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">ub</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">zero</span><span class="o">=</span><span class="mf">1e-10</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the projected gradient defined as (where X=vec):</span>
+<span class="sd">    [\grad_X^P]_ij = [\grad_X]_ij if X_ij&gt;0 else min(0, [\grad_X]_ij)</span>
+
+<span class="sd">    :param grad: vector of shape (d,) containing the gradient of vec</span>
+<span class="sd">    :param vec: vector of shape (d,) containing the elements of vec</span>
+<span class="sd">    :param [zero]: floating point that represents zero (1e-10 by default)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lb</span> <span class="o">=</span> <span class="n">lb</span> <span class="o">+</span> <span class="n">zero</span>
+    <span class="n">ub</span> <span class="o">=</span> <span class="n">ub</span> <span class="o">-</span> <span class="n">zero</span>
+    <span class="n">rtv</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">rtv</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">grad</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">vec</span> <span class="o">&gt;</span> <span class="n">lb</span><span class="p">,</span> <span class="n">vec</span> <span class="o">&lt;</span> <span class="n">ub</span><span class="p">)])</span>
+    <span class="n">rtv</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">scipy</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">grad</span><span class="p">[</span><span class="n">vec</span> <span class="o">&lt;=</span> <span class="n">lb</span><span class="p">],</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="n">rtv</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">scipy</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">grad</span><span class="p">[</span><span class="n">vec</span> <span class="o">&gt;=</span> <span class="n">ub</span><span class="p">],</span> <span class="mi">0</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">rtv</span>
+
+<span class="k">def</span> <span class="nf">_initialize_and_validate</span><span class="p">(</span><span class="n">W_in</span><span class="p">,</span> <span class="n">T_in</span><span class="p">,</span> <span class="n">W_mat</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">init</span><span class="p">,</span> <span class="n">random_state</span><span class="p">,</span>
+                             <span class="n">project_T_each_iter</span><span class="p">,</span> <span class="n">project_W_each_iter</span><span class="p">,</span>
+                             <span class="n">w_row_sum</span><span class="p">,</span> <span class="n">t_row_sum</span><span class="p">,</span> <span class="n">fix_W</span><span class="p">,</span> <span class="n">fix_T</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span>
+                             <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Initializes W, T, or sets them to W_in, T_in, respectively. Ensures</span>
+<span class="sd">    that W, T satisfy non-negativity and row-sum constraints.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    **kwargs</span>
+<span class="sd">        All parameters are passed directly from `nmf` using locals()</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    W : array_like</span>
+<span class="sd">        n*k array of doc-topic weights</span>
+<span class="sd">    T : array_like</span>
+<span class="sd">        k*d array of topic-word probabilities</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">debug</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">W_in</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">T_in</span><span class="p">))</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">W_mat</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">W</span><span class="p">,</span> <span class="n">T</span> <span class="o">=</span> <span class="n">initialize_nmf</span><span class="p">(</span><span class="n">W_mat</span> <span class="o">*</span> <span class="n">X</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">init</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span>
+                                  <span class="n">row_normalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">W</span><span class="p">,</span> <span class="n">T</span> <span class="o">=</span> <span class="n">initialize_nmf</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">init</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="n">random_state</span><span class="p">,</span>
+                                  <span class="n">row_normalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">project_T_each_iter</span><span class="p">:</span>
+            <span class="n">T</span> <span class="o">=</span> <span class="n">normalize</span><span class="p">(</span><span class="n">T</span><span class="p">)</span> <span class="o">*</span> <span class="n">t_row_sum</span>
+            <span class="c1"># if project_W_each_iter and not w_row_sum is None:</span>
+            <span class="c1">#    W = normalize(W) * w_row_sum</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">W_in</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">W_in</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;W_in has wrong dimensions, must be n*k&#39;</span><span class="p">)</span>
+        <span class="n">W</span> <span class="o">=</span> <span class="n">W_in</span>
+
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">T_in</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">T_in</span><span class="p">)</span> <span class="o">==</span> <span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">d</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;T_in has wrong dimensions, must be k*d&#39;</span><span class="p">)</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">T_in</span>
+
+    <span class="k">if</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">T</span><span class="p">):</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">T</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">scipy</span><span class="o">.</span><span class="n">sparse</span><span class="o">.</span><span class="n">issparse</span><span class="p">(</span><span class="n">W</span><span class="p">):</span>
+        <span class="n">W</span> <span class="o">=</span> <span class="n">W</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">project_W_each_iter</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">fix_W</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">w_row_sum</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Projecting W rows after initialization&#39;</span><span class="p">)</span>
+        <span class="n">W</span> <span class="o">=</span> <span class="n">proj_mat_to_simplex</span><span class="p">(</span><span class="n">W</span><span class="p">,</span> <span class="n">w_row_sum</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">project_T_each_iter</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">fix_T</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">t_row_sum</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">debug</span> <span class="o">&gt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Projecting W rows after initialization&#39;</span><span class="p">)</span>
+        <span class="n">T</span> <span class="o">=</span> <span class="n">proj_mat_to_simplex</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">t_row_sum</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">W</span><span class="p">,</span> <span class="n">T</span>
+</pre></div>
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2018, Maksim Tsikhanovich.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../../',
+            VERSION:'0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../../_static/jquery.js"></script>
+      <script type="text/javascript" src="../../_static/underscore.js"></script>
+      <script type="text/javascript" src="../../_static/doctools.js"></script>
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
