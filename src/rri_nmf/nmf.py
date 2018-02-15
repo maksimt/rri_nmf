@@ -45,6 +45,7 @@ import logging
 # DEBUG-3 - show 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 # ------------------------------------------------------------------------------
 
 
@@ -189,9 +190,8 @@ def nmf(X, k, w_row=None, W_mat=None, fix_W=False, fix_T=False,
         k * d topic-feature matrix
 
     """
-    global eps_div_by_zero, OBJ, n_resets_remaining
+    global eps_div_by_zero, OBJ, n_resets_remaining, logger
     n_resets_remaining = n_resets
-
     """ Factorize non-negative [n*d] X as  non-negative [n*k] W x [k*d] T
 
     :param X: ndarray of shape (n, d)
@@ -596,12 +596,12 @@ class _MeasureDelta(object):
         self.name = name
 
     def __enter__(self):
-        global OBJ
+        global OBJ, logger
         if logger.level <= logging.DEBUG:
             self.obj = OBJ.true_objective()
 
     def __exit__(self, type, value, traceback):
-        global OBJ
+        global OBJ, logger
         if logger.level <= logging.DEBUG:
             obj_after = OBJ.true_objective()
             name_s = '{}: '.format(self.name) if self.name else ''

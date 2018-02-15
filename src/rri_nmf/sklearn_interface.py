@@ -7,7 +7,9 @@ from sklearn.model_selection import train_test_split
 import inspect
 import numpy as np
 import scipy.sparse as sp
-from nmf import nmf
+from nmf import nmf, logger as nmf_logger
+import logging
+#nmf_logger.setLevel(logging.INFO)
 from matrixops import tfidf, normalize
 
 
@@ -272,7 +274,7 @@ class NMF_TM_Estimator(sklearn.base.BaseEstimator,
                    do_final_project_W=self.do_final_project_W,
                    W_in=W_in, T_in=T_in,
                    reg_w_l1=self.wr1, reg_w_l2=self.wr2, reg_t_l1=self.tr1,
-                   reg_t_l2=self.tr2,
+                   reg_t_l2=self.tr2, compute_obj_each_iter=False,
                    random_state=self.random_state, **self.nmf_kwargs)
 
         self.W = soln.pop('W')
@@ -302,7 +304,7 @@ class NMF_TM_Estimator(sklearn.base.BaseEstimator,
                    project_T_each_iter=True, t_row_sum=1.0,
                    do_final_project_W=self.do_final_project_W,
                    W_in=W_in,
-                   T_in=T_in,
+                   T_in=T_in, compute_obj_each_iter=False,
                    reg_w_l1=self.wr1, reg_w_l2=self.wr2, reg_t_l1=self.tr1,
                    reg_t_l2=self.tr2, random_state=self.random_state,
                     **self.nmf_kwargs)
@@ -328,6 +330,7 @@ class NMF_TM_Estimator(sklearn.base.BaseEstimator,
                    project_W_each_iter=False, w_row_sum=1.0,
                    t_row_sum=1.0, T_in=self.T,
                    do_final_project_W=self.do_final_project_W,
+                   compute_obj_each_iter=False,
                    fix_T=True, reg_w_l1=self.wr1, reg_w_l2=self.wr2,
                    reg_t_l1=self.tr1, reg_t_l2=self.tr2,
                    random_state=self.random_state)

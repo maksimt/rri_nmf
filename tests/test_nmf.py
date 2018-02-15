@@ -98,7 +98,7 @@ def test_convergence_TM_Estimator(text_train):
                           do_final_project_W=False)
     M2 = M2.fit(X)
     ## print M2.nmf_outputs['obj_history']
-    M2.max_iter = 10
+    #M2.max_iter = 10
     for _ in range(7):
         M2 = M2.one_iter(X)
         #print M2.nmf_outputs['obj_history']
